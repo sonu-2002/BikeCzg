@@ -1,0 +1,2177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="https://delightful-wisp-0f275c.netlify.app/">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#111a24">
+  <title>Neon Run — City Ride</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
+    :root{color-scheme:dark;--ink:#f4f3ef;--muted:#a6b0bc;--cyan:#68e0db;--orange:#ff875d}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#111a24;font-family:"DM Sans",sans-serif;color:var(--ink)}
+    #game{position:fixed;inset:0}
+    #game canvas{display:block;width:100%;height:100%}
+    .vignette{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(9,15,23,.5),transparent 30%,transparent 65%,rgba(9,15,23,.35))}
+    .topbar{position:fixed;top:24px;left:28px;right:28px;display:flex;align-items:flex-start;justify-content:space-between;z-index:2;pointer-events:none}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand-mark{width:38px;height:38px;display:grid;place-items:center;border:1px solid rgba(104,224,219,.6);color:var(--cyan);font-size:20px;transform:skew(-8deg)}
+    .brand-copy{font-size:10px;font-weight:700;letter-spacing:.23em;color:var(--muted);text-transform:uppercase}
+    .brand-copy strong{display:block;color:var(--ink);font:800 21px/1 "Barlow Condensed",sans-serif;letter-spacing:.08em;margin-top:3px}
+    .hud{display:flex;gap:10px}
+    .metric{min-width:100px;padding:10px 15px 9px;background:rgba(14,22,32,.72);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px)}
+    .metric-label{font-size:9px;letter-spacing:.19em;color:#aab5bf;text-transform:uppercase}
+    .metric-value{font:700 25px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.04em}
+    .metric-value small{font:500 10px "DM Sans",sans-serif;color:var(--muted);letter-spacing:.1em}
+    .speed-box .metric-value{color:var(--cyan)}
+    .camera-toggle{position:fixed;z-index:6;top:24px;right:156px;padding:12px 15px;border:1px solid rgba(255,255,255,.2);background:rgba(14,22,32,.78);color:var(--ink);font:700 10px "DM Sans",sans-serif;letter-spacing:.16em;cursor:pointer;pointer-events:auto}
+    .camera-toggle:hover{border-color:var(--cyan);color:var(--cyan)}
+    .camera-panel{position:fixed;z-index:7;top:75px;right:28px;width:250px;max-height:calc(100vh - 95px);overflow-y:auto;padding:17px 18px;background:rgba(14,22,32,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.3);backdrop-filter:blur(12px)}
+    .camera-panel[hidden]{display:none}
+    #ride-camera-controls[hidden],#garage-camera-controls[hidden]{display:none}
+    .camera-panel h2{margin:0 0 15px;font:700 13px "DM Sans",sans-serif;letter-spacing:.12em;text-transform:uppercase}
+    .camera-control{display:block;margin:13px 0}
+    .camera-control span{display:flex;justify-content:space-between;margin-bottom:7px;color:#c1cbd2;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+    .camera-control output{color:var(--cyan);font-variant-numeric:tabular-nums}
+    .camera-control input{width:100%;accent-color:var(--cyan);cursor:pointer}
+    .camera-reset{width:100%;padding:8px;border:1px solid rgba(255,255,255,.18);background:transparent;color:#c1cbd2;font:600 9px "DM Sans",sans-serif;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+    .camera-reset:hover{border-color:var(--cyan);color:var(--cyan)}
+    .bridge-jump{position:fixed;z-index:5;top:76px;right:28px;padding:8px 11px;border:1px solid rgba(104,224,219,.45);background:rgba(14,22,32,.78);color:var(--cyan);font:700 9px "DM Sans",sans-serif;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;pointer-events:auto}
+    .bridge-jump:hover{border-color:var(--orange);color:var(--orange)}
+    .status{position:fixed;z-index:2;left:29px;bottom:25px;display:flex;gap:10px;align-items:center;color:#d4dbe1;font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+    .hint{position:fixed;z-index:2;right:28px;bottom:25px;color:#c0c8ce;font-size:10px;letter-spacing:.12em;text-transform:uppercase;text-align:right}
+    .hint b{color:#fff;font-weight:700}
+    .overlay{position:fixed;inset:0;z-index:4;display:grid;place-items:center;background:rgba(7,12,19,.32);backdrop-filter:blur(3px);transition:opacity .25s,visibility .25s}
+    .overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .card{width:min(440px,calc(100vw - 34px));padding:36px 38px 31px;background:rgba(14,22,32,.92);border:1px solid rgba(255,255,255,.13);box-shadow:0 24px 80px rgba(0,0,0,.4);text-align:left}
+    .eyebrow{display:flex;align-items:center;gap:9px;color:var(--cyan);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase}
+    .eyebrow:before{content:"";width:20px;height:1px;background:var(--cyan)}
+    h1{font:900 clamp(46px,9vw,68px)/.86 "Barlow Condensed",sans-serif;letter-spacing:.015em;text-transform:uppercase;margin:20px 0 16px}
+    h1 span{display:block;color:var(--cyan)}
+    .description{max-width:325px;color:#acb6c0;font-size:13px;line-height:1.75;margin:0 0 24px}
+    .features{display:flex;gap:15px;flex-wrap:wrap;margin:0 0 26px;color:#c5cdd3;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+    .features span:before{content:"+";color:var(--orange);margin-right:6px}
+    .primary{width:100%;height:51px;border:0;background:var(--cyan);color:#112027;font:800 14px "DM Sans",sans-serif;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:background .15s,transform .15s}
+    .primary:hover{background:#8ff0e8;transform:translateY(-1px)}
+    .controls-note{margin-top:17px;text-align:center;color:#8f9ba6;font-size:10px;letter-spacing:.05em}
+    .menu-screen,.garage-screen{position:fixed;inset:0;z-index:4}
+    .menu-screen[hidden],.garage-screen[hidden]{display:none}
+    .menu-screen{background:linear-gradient(90deg,rgba(8,15,23,.82),rgba(8,15,23,.18) 58%,rgba(8,15,23,.05)),linear-gradient(0deg,rgba(8,15,23,.82),transparent 36%)}
+    .menu-brand{position:absolute;top:24px;left:28px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.23em;text-transform:uppercase}
+    .menu-brand strong{display:block;color:var(--ink);font:800 21px/1 "Barlow Condensed",sans-serif;letter-spacing:.08em;margin-top:3px}
+    .menu-coins{position:fixed;z-index:5;top:24px;right:28px;display:flex;align-items:center;gap:8px;padding:12px 15px;border:1px solid rgba(255,255,255,.16);background:rgba(14,22,32,.78);font-size:11px;font-weight:700;letter-spacing:.1em}
+    .coin-icon{color:#ffd26e;font-size:17px}
+    .menu-copy{position:absolute;top:27%;left:9%;max-width:390px}
+    .menu-copy h1{font-size:clamp(54px,8vw,92px);margin:18px 0}
+    .menu-copy .description{max-width:320px}
+    .bike-caption{position:absolute;right:8%;top:43%;text-align:right;text-transform:uppercase}
+    .bike-caption small{display:block;color:var(--cyan);font-size:9px;letter-spacing:.2em}
+    .bike-caption strong{display:block;margin-top:4px;font:800 30px "Barlow Condensed",sans-serif;letter-spacing:.08em}
+    .menu-actions{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:18px;padding:22px max(28px,8vw) 26px;background:linear-gradient(0deg,rgba(8,15,23,.95),rgba(8,15,23,.25));}
+    .menu-action{min-width:190px;height:56px;padding:0 24px;border:1px solid rgba(255,255,255,.25);background:rgba(14,22,32,.76);color:var(--ink);font:800 12px "DM Sans",sans-serif;letter-spacing:.17em;text-transform:uppercase;cursor:pointer}
+    .menu-action:hover{border-color:var(--cyan);color:var(--cyan)}
+    .menu-action.primary-action{border-color:var(--cyan);background:var(--cyan);color:#112027}
+    .menu-action.primary-action:hover{background:#8ff0e8;color:#112027}
+    .garage-screen{background:linear-gradient(90deg,rgba(8,15,23,.36),rgba(8,15,23,.08) 50%,rgba(8,15,23,.36)),linear-gradient(0deg,rgba(8,15,23,.92),transparent 34%)}
+    .garage-heading{position:absolute;top:27px;left:28px}
+    .garage-heading strong{display:block;font:800 26px "Barlow Condensed",sans-serif;letter-spacing:.12em}
+    .garage-heading span{color:var(--muted);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+    .garage-close{position:absolute;top:84px;left:auto;right:28px;padding:12px 15px;border:1px solid rgba(255,255,255,.24);background:rgba(14,22,32,.75);color:var(--ink);font:700 10px "DM Sans",sans-serif;letter-spacing:.15em;cursor:pointer}
+    .garage-arrow{position:absolute;top:48%;width:52px;height:64px;border:1px solid rgba(255,255,255,.22);background:rgba(14,22,32,.65);color:white;font-size:28px;cursor:pointer}
+    .garage-arrow:hover{border-color:var(--cyan);color:var(--cyan)}
+    .garage-arrow.prev{left:28px}.garage-arrow.next{right:28px}
+    .garage-caption{position:absolute;left:0;right:0;bottom:112px;text-align:center;text-transform:uppercase}
+    .garage-caption span{color:var(--cyan);font-size:9px;font-weight:700;letter-spacing:.22em}
+    .garage-caption h2{margin:5px 0 2px;font:800 clamp(28px,5vw,46px) "Barlow Condensed",sans-serif;letter-spacing:.1em}
+    .garage-caption p{margin:0;color:#aab5bf;font-size:10px;letter-spacing:.13em}
+    .garage-buybar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:24px;padding:20px 24px 24px;background:rgba(8,15,23,.86);border-top:1px solid rgba(255,255,255,.12)}
+    .garage-price{min-width:130px;color:#c5cdd3;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+    .garage-price strong{display:block;margin-top:4px;color:#ffd26e;font:700 19px "Barlow Condensed",sans-serif}
+    .garage-buybar .menu-action{min-width:210px}
+    .return-menu{margin-top:10px}
+    body:not(.ride-mode) .topbar,body:not(.ride-mode) .bridge-jump,body:not(.ride-mode) .status,body:not(.ride-mode) .hint,body:not(.ride-mode) .touch-controls{display:none}
+    body.ride-mode .menu-screen,body.ride-mode .garage-screen{display:none}
+    body.ride-mode .menu-coins{display:none}
+    body.ride-mode .camera-toggle{top:76px;right:auto;left:28px}
+    body.ride-mode .camera-panel{top:115px;right:auto;left:28px}
+    .touch-controls{position:fixed;z-index:3;left:0;right:0;bottom:56px;display:none;justify-content:space-between;padding:0 24px;pointer-events:none}
+    .touch-controls button{pointer-events:auto;width:58px;height:58px;border:1px solid rgba(255,255,255,.3);background:rgba(14,22,32,.55);color:white;font-size:24px;border-radius:50%;touch-action:none}
+    @media(max-width:650px){.topbar{top:15px;left:15px;right:15px}.brand-mark{width:32px;height:32px}.brand-copy{font-size:8px}.brand-copy strong{font-size:18px}.hud{gap:6px}.metric{min-width:70px;padding:8px 9px}.metric-label{font-size:8px}.metric-value{font-size:21px}.camera-toggle{top:15px;right:116px;padding:11px 9px;font-size:8px}.camera-panel{top:60px;right:15px;left:auto}.status{left:16px;bottom:15px;font-size:8px}.hint{right:16px;bottom:15px;font-size:8px}.touch-controls{display:flex}.card{padding:30px 26px 25px}.description{font-size:12px}.menu-brand{top:16px;left:15px;font-size:8px}.menu-brand strong{font-size:18px}.menu-coins{top:15px;right:15px;padding:10px;font-size:9px}.menu-copy{top:23%;left:7%;right:7%}.menu-copy h1{font-size:58px}.menu-copy .description{font-size:11px}.bike-caption{top:auto;right:7%;bottom:145px}.bike-caption strong{font-size:23px}.menu-actions{gap:10px;padding:16px 14px 18px}.menu-action{min-width:0;flex:1;height:52px;padding:0 10px;font-size:10px}.garage-heading{top:19px;left:15px}.garage-heading strong{font-size:21px}.garage-close{top:66px;right:15px;padding:10px;font-size:8px}.garage-arrow{top:43%;width:42px;height:54px}.garage-arrow.prev{left:12px}.garage-arrow.next{right:12px}.garage-caption{bottom:111px}.garage-buybar{gap:10px;padding:15px 12px 18px}.garage-price{min-width:95px;font-size:8px}.garage-price strong{font-size:16px}.garage-buybar .menu-action{min-width:0;max-width:190px}}
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+  <div class="vignette"></div>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">↗</div><div class="brand-copy">Urban highway<strong>NEON RUN</strong></div></div>
+    <div class="hud">
+      <div class="metric speed-box"><div class="metric-label">Speed</div><div class="metric-value"><span id="speed">0</span> <small>KM/H</small></div></div>
+      <div class="metric"><div class="metric-label">Distance</div><div class="metric-value"><span id="distance">0</span> <small>M</small></div></div>
+      <div class="metric"><div class="metric-label">Best</div><div class="metric-value"><span id="best">0</span> <small>M</small></div></div>
+      <div class="metric"><div class="metric-label">FPS</div><div class="metric-value"><span id="fps">0</span></div></div>
+    </div>
+  </header>
+  <button class="camera-toggle" id="camera-toggle" type="button" aria-expanded="false" aria-controls="camera-panel">SETTINGS ⚙</button>
+  <button class="bridge-jump" id="bridge-jump" type="button" title="Jump to harbor bay bridge (B)">BRIDGE SPAN ↗</button>
+  <section class="camera-panel" id="camera-panel" aria-label="Camera settings" hidden>
+    <div id="ride-camera-controls">
+      <h2>Camera settings</h2>
+      <label class="camera-control" for="camera-height">
+        <span>Height <output id="camera-height-value"></output></span>
+        <input id="camera-height" type="range" min="0" max="9" step="0.1">
+      </label>
+      <label class="camera-control" for="camera-distance">
+        <span>Follow distance <output id="camera-distance-value"></output></span>
+        <input id="camera-distance" type="range" min="0" max="18" step="0.5">
+      </label>
+      <label class="camera-control" for="camera-fov">
+        <span>Field of view <output id="camera-fov-value"></output></span>
+        <input id="camera-fov" type="range" min="40" max="75" step="1">
+      </label>
+      <button class="camera-reset" id="camera-reset" type="button">Reset camera</button>
+    </div>
+    <div id="garage-camera-controls" hidden>
+      <h2>Garage camera</h2>
+      <label class="camera-control" for="garage-camera-x">
+        <span>Position X <output id="garage-camera-x-value"></output></span>
+        <input id="garage-camera-x" type="range" min="-24" max="-4" step="0.1">
+      </label>
+      <label class="camera-control" for="garage-camera-y">
+        <span>Position Y <output id="garage-camera-y-value"></output></span>
+        <input id="garage-camera-y" type="range" min="0" max="10" step="0.1">
+      </label>
+      <label class="camera-control" for="garage-camera-z">
+        <span>Position Z <output id="garage-camera-z-value"></output></span>
+        <input id="garage-camera-z" type="range" min="-12" max="12" step="0.1">
+      </label>
+      <label class="camera-control" for="garage-camera-fov">
+        <span>Field of view <output id="garage-camera-fov-value"></output></span>
+        <input id="garage-camera-fov" type="range" min="40" max="100" step="1">
+      </label>
+      <button class="camera-reset" id="garage-camera-reset" type="button">Reset garage camera</button>
+    </div>
+  </section>
+  <div class="status"><i class="status-dot"></i><span id="ride-status">Engine ready</span></div>
+  <div class="hint"><b>← →</b> steer &nbsp;·&nbsp; <b>↑</b> accelerate &nbsp;·&nbsp; <b>↓</b> brake</div>
+  <div class="touch-controls"><button id="left" aria-label="Steer left">←</button><button id="right" aria-label="Steer right">→</button></div>
+  <div class="menu-screen" id="menu-screen">
+    <div class="menu-brand">Urban highway<strong>NEON RUN</strong></div>
+    <div class="menu-copy">
+      <div class="eyebrow">City ride · endless highway</div>
+      <h1>Own the <span>road.</span></h1>
+      <p class="description">Choose your ride, hit the highway, and see how far you can go.</p>
+    </div>
+    <div class="bike-caption"><small>Selected ride</small><strong id="menu-bike-name">Street Racer</strong></div>
+    <nav class="menu-actions" aria-label="Main menu">
+      <button class="menu-action" id="open-garage" type="button">Garage</button>
+      <button class="menu-action primary-action" id="drive" type="button">Drive</button>
+    </nav>
+  </div>
+  <div class="menu-coins"><span class="coin-icon">◈</span><span id="coin-balance">3,000</span></div>
+  <section class="garage-screen" id="garage-screen" aria-label="Bike garage" hidden>
+    <div class="garage-heading"><span>Choose your ride</span><strong>THE GARAGE</strong></div>
+    <button class="garage-close" id="garage-close" type="button">← MENU</button>
+    <button class="garage-arrow prev" id="bike-prev" type="button" aria-label="Previous bike">‹</button>
+    <button class="garage-arrow next" id="bike-next" type="button" aria-label="Next bike">›</button>
+    <div class="garage-caption">
+      <span id="garage-bike-index">BIKE 01 / 04</span>
+      <h2 id="garage-bike-name">STREET RACER</h2>
+      <p id="garage-bike-description">A light, nimble ride built for the city.</p>
+    </div>
+    <div class="garage-buybar">
+      <div class="garage-price"><span id="bike-price-label">OWNED</span><strong id="bike-price">READY TO RIDE</strong></div>
+      <button class="menu-action primary-action" id="bike-buy" type="button">SELECT BIKE</button>
+    </div>
+  </section>
+  <div class="overlay hidden" id="overlay">
+    <div class="card">
+      <div class="eyebrow">City ride · endless highway</div>
+      <h1 id="title">Ride <span>over.</span></h1>
+      <p class="description" id="message">Your run has ended. Take a breath, then hit the road again.</p>
+      <div class="features"><span>3 lanes</span><span>Endless city</span><span>Watch the traffic</span></div>
+      <button class="primary" id="start">Ride again</button>
+      <button class="camera-reset return-menu" id="return-menu" type="button">Back to menu</button>
+      <div class="controls-note">ARROW KEYS / WASD TO RIDE · AVOID THE CARS</div>
+    </div>
+  </div>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+    const root = document.querySelector("#game");
+    const overlay = document.querySelector("#overlay");
+    const menuScreen = document.querySelector("#menu-screen");
+    const garageScreen = document.querySelector("#garage-screen");
+    const startButton = document.querySelector("#start");
+    const menuBikeName = document.querySelector("#menu-bike-name");
+    const coinBalanceReadout = document.querySelector("#coin-balance");
+    const garageBikeIndex = document.querySelector("#garage-bike-index");
+    const garageBikeName = document.querySelector("#garage-bike-name");
+    const garageBikeDescription = document.querySelector("#garage-bike-description");
+    const bikePriceLabel = document.querySelector("#bike-price-label");
+    const bikePriceReadout = document.querySelector("#bike-price");
+    const bikeBuyButton = document.querySelector("#bike-buy");
+    const speedReadout = document.querySelector("#speed");
+    const distanceReadout = document.querySelector("#distance");
+    const bestReadout = document.querySelector("#best");
+    const fpsReadout = document.querySelector("#fps");
+    const statusReadout = document.querySelector("#ride-status");
+    const cameraToggle = document.querySelector("#camera-toggle");
+    const cameraPanel = document.querySelector("#camera-panel");
+    const rideCameraControls = document.querySelector("#ride-camera-controls");
+    const garageCameraControls = document.querySelector("#garage-camera-controls");
+    const bridgeJumpButton = document.querySelector("#bridge-jump");
+    const bikeOptions = [
+      { file: "./Bike.glb", name: "Street Racer", description: "A light, nimble ride built for the city.", price: 0 },
+      { file: "./Bike2.glb", name: "Night Runner", description: "A smooth ride with a little more attitude.", price: 900 },
+      { file: "./Bike3.glb", name: "Coastline", description: "Made for long, fast runs along the coast.", price: 1600 },
+      { file: "./Bike4.glb", name: "Neon Phantom", description: "A rare ride for the boldest riders.", price: 2400 }
+    ];
+    let selectedBikeIndex = Number(localStorage.getItem("neon-run-bike") || 0);
+    if (!Number.isInteger(selectedBikeIndex) || selectedBikeIndex < 0 || selectedBikeIndex >= bikeOptions.length) selectedBikeIndex = 0;
+    let ownedBikeIndices = [0];
+    try {
+      const savedOwnedBikes = JSON.parse(localStorage.getItem("neon-run-owned-bikes") || "[0]");
+      if (Array.isArray(savedOwnedBikes)) {
+        ownedBikeIndices = [...new Set(savedOwnedBikes.filter(index =>
+          Number.isInteger(index) && index >= 0 && index < bikeOptions.length
+        ).concat(0))];
+      }
+    } catch (error) {
+      console.warn("Could not read saved bikes:", error);
+    }
+    if (!ownedBikeIndices.includes(selectedBikeIndex)) selectedBikeIndex = 0;
+    const savedCoinBalance = localStorage.getItem("neon-run-coins");
+    let coinBalance = savedCoinBalance === null ? 3000 : Number(savedCoinBalance);
+    if (!Number.isFinite(coinBalance) || coinBalance < 0) coinBalance = 3000;
+    let bikeModels = [];
+    let activeBikeModel = null;
+    let appMode = "menu";
+    function updateCoinBalance() {
+      coinBalanceReadout.textContent = Math.floor(coinBalance).toLocaleString();
+    }
+    updateCoinBalance();
+    const defaultCameraSettings = { height: 1.8, distance: 3.5, fov: 54 };
+    const defaultGarageCameraSettings = { x: -13.5, y: 1, z: 0.4, fov: 60 };
+    const garageCameraSettings = { ...defaultGarageCameraSettings };
+    const garageBikeRotationY = 2.55 + 4 * Math.PI / 3;
+    function readCameraSetting(name, min, max) {
+      const saved = Number(localStorage.getItem(`neon-run-camera-${name}`));
+      return Number.isFinite(saved) && saved >= min && saved <= max ? saved : defaultCameraSettings[name];
+    }
+    const cameraSettings = {
+      height: readCameraSetting("height", 0, 9),
+      distance: readCameraSetting("distance", 0, 18),
+      fov: readCameraSetting("fov", 40, 75)
+    };
+    // Scene & Atmospheric Fog tuned to blend seamlessly with the Los Santos dusk-to-night horizon
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1f1d36);
+    scene.fog = new THREE.Fog(0x28233e, 52, 265);
+    const garageScene = new THREE.Scene();
+    garageScene.background = new THREE.Color(0x101923);
+    garageScene.add(new THREE.HemisphereLight(0xb8c9e8, 0x24212c, 1.7));
+    const garageKeyLight = new THREE.DirectionalLight(0xffd5a5, 2.2);
+    garageKeyLight.position.set(-5, 9, 6);
+    garageScene.add(garageKeyLight);
+    const garageFillLight = new THREE.DirectionalLight(0x68e0db, 1.2);
+    garageFillLight.position.set(6, 5, -5);
+    garageScene.add(garageFillLight);
+    const garageFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(42, 42),
+      new THREE.MeshStandardMaterial({ color: 0x1c2530, roughness: 0.72, metalness: 0.2 })
+    );
+    garageFloor.rotation.x = -Math.PI / 2;
+    garageFloor.position.y = -0.035;
+    garageScene.add(garageFloor);
+
+    const camera = new THREE.PerspectiveCamera(54, innerWidth / innerHeight, .1, 380);
+    camera.position.set(0, cameraSettings.height, cameraSettings.distance);
+    camera.fov = cameraSettings.fov;
+    camera.updateProjectionMatrix();
+    const cameraInputs = {
+      height: document.querySelector("#camera-height"),
+      distance: document.querySelector("#camera-distance"),
+      fov: document.querySelector("#camera-fov")
+    };
+    const garageCameraInputs = {
+      x: document.querySelector("#garage-camera-x"),
+      y: document.querySelector("#garage-camera-y"),
+      z: document.querySelector("#garage-camera-z"),
+      fov: document.querySelector("#garage-camera-fov")
+    };
+    let dynamicFovOffset = 0;
+    function applyCameraSettings() {
+      camera.position.y = cameraSettings.height;
+      camera.position.z = cameraSettings.distance;
+      camera.fov = cameraSettings.fov + dynamicFovOffset;
+      camera.updateProjectionMatrix();
+      for (const [name, input] of Object.entries(cameraInputs)) {
+        input.value = String(cameraSettings[name]);
+        document.querySelector(`#camera-${name}-value`).textContent =
+          name === "fov" ? `${cameraSettings[name]}°` : `${cameraSettings[name].toFixed(1)} m`;
+        localStorage.setItem(`neon-run-camera-${name}`, String(cameraSettings[name]));
+      }
+    }
+    applyCameraSettings();
+    cameraToggle.addEventListener("click", () => {
+      const open = cameraPanel.hidden;
+      cameraPanel.hidden = !open;
+      cameraToggle.setAttribute("aria-expanded", String(open));
+    });
+    for (const [name, input] of Object.entries(cameraInputs)) {
+      input.addEventListener("input", () => {
+        cameraSettings[name] = Number(input.value);
+        applyCameraSettings();
+      });
+    }
+    document.querySelector("#camera-reset").addEventListener("click", () => {
+      Object.assign(cameraSettings, defaultCameraSettings);
+      applyCameraSettings();
+    });
+    function updateGarageCameraReadouts() {
+      for (const [name, input] of Object.entries(garageCameraInputs)) {
+        input.value = String(garageCameraSettings[name]);
+        document.querySelector(`#garage-camera-${name}-value`).textContent =
+          name === "fov" ? `${garageCameraSettings[name]}°` : garageCameraSettings[name].toFixed(1);
+      }
+    }
+    function applyGarageCameraSettings() {
+      camera.position.set(garageCameraSettings.x, garageCameraSettings.y, garageCameraSettings.z);
+      camera.fov = garageCameraSettings.fov;
+      camera.updateProjectionMatrix();
+      updateGarageCameraReadouts();
+    }
+    updateGarageCameraReadouts();
+    for (const [name, input] of Object.entries(garageCameraInputs)) {
+      input.addEventListener("input", () => {
+        garageCameraSettings[name] = Number(input.value);
+        if (appMode === "garage") applyGarageCameraSettings();
+        else updateGarageCameraReadouts();
+      });
+    }
+    document.querySelector("#garage-camera-reset").addEventListener("click", () => {
+      Object.assign(garageCameraSettings, defaultGarageCameraSettings);
+      if (appMode === "garage") applyGarageCameraSettings();
+      else updateGarageCameraReadouts();
+    });
+
+    const isMobileDevice = matchMedia("(max-width: 800px), (pointer: coarse)").matches;
+    let qualityScale = 1;
+    const getRenderPixelRatio = () => Math.max(.75, Math.min(devicePixelRatio || 1, isMobileDevice ? 1 : 1.25) * qualityScale);
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: !isMobileDevice, powerPreference: "high-performance" });
+    } catch (err) {
+      renderer = new THREE.WebGLRenderer({ antialias: false });
+    }
+    renderer.setPixelRatio(getRenderPixelRatio());
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.06;
+    root.appendChild(renderer.domElement);
+
+    const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+    // -------------------------------------------------------------------------
+    // 1. LOS SANTOS DUSK-TO-NIGHT SKY DOME & GOLDEN-HOUR/TWILIGHT LIGHTING
+    // -------------------------------------------------------------------------
+    function createSkyDome() {
+      const skyCanvas = document.createElement("canvas");
+      skyCanvas.width = 256;
+      skyCanvas.height = 512;
+      const ctx = skyCanvas.getContext("2d");
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0.0, "#0b162c");   // Deep Los Santos indigo zenith
+      grad.addColorStop(0.26, "#182342");  // Upper twilight blue-violet
+      grad.addColorStop(0.41, "#282442");  // Rich GTA V twilight purple
+      grad.addColorStop(0.47, "#583148");  // Warm dusk magenta-rose
+      grad.addColorStop(0.505, "#8b4548"); // Sunset amber-crimson horizon glow
+      grad.addColorStop(0.535, "#36273e"); // Lower coastal haze
+      grad.addColorStop(1.0, "#1c1a30");   // Lower hemisphere
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 512);
+
+      // Soft Pacific sunset glow radial bloom on the western horizon
+      const sunGlow = ctx.createRadialGradient(78, 258, 6, 78, 258, 125);
+      sunGlow.addColorStop(0.0, "rgba(255, 184, 108, 0.42)");
+      sunGlow.addColorStop(0.45, "rgba(232, 106, 92, 0.18)");
+      sunGlow.addColorStop(1.0, "rgba(139, 69, 72, 0.0)");
+      ctx.fillStyle = sunGlow;
+      ctx.fillRect(0, 120, 256, 260);
+
+      // Subtle high-altitude evening stars near zenith
+      ctx.fillStyle = "rgba(235, 242, 255, 0.42)";
+      for (let i = 0; i < 85; i++) {
+        const sx = (i * 73) % 256;
+        const sy = 8 + ((i * 47) % 155);
+        const size = i % 6 === 0 ? 1.6 : 1;
+        ctx.fillRect(sx, sy, size, size);
+      }
+
+      const skyTex = new THREE.CanvasTexture(skyCanvas);
+      skyTex.colorSpace = THREE.SRGBColorSpace;
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(310, 28, 18),
+        new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false })
+      );
+      scene.add(dome);
+    }
+    createSkyDome();
+
+    // Hemisphere + low golden-amber sunset rim light + cool twilight fill
+    scene.add(new THREE.HemisphereLight(0x8896d6, 0x241d2e, 0.92));
+
+    const sunsetSunLight = new THREE.DirectionalLight(0xffb478, 1.05);
+    sunsetSunLight.position.set(-34, 24, -45);
+    sunsetSunLight.castShadow = false;
+    scene.add(sunsetSunLight);
+
+    const twilightFillLight = new THREE.DirectionalLight(0x7ca6ff, 0.58);
+    twilightFillLight.position.set(28, 34, 22);
+    twilightFillLight.castShadow = false;
+    scene.add(twilightFillLight);
+
+    // -------------------------------------------------------------------------
+    // 2. OLYMPIC / DEL PERRO FREEWAY, K-RAIL BARRIERS & CALIFORNIA SOUND WALLS
+    // -------------------------------------------------------------------------
+    const roadLoader = new THREE.TextureLoader();
+    const texture = roadLoader.load(
+      "./road.png",
+      undefined,
+      undefined,
+      err => console.warn("Road texture fallback in use:", err)
+    );
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.anisotropy = maxAnisotropy;
+    texture.repeat.set(1, 80);
+
+    const road = new THREE.Mesh(
+      new THREE.PlaneGeometry(13, 1200),
+      new THREE.MeshStandardMaterial({ map: texture, color: 0xa2aab8, roughness: .8, metalness: .1 })
+    );
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, .015, -550);
+    road.receiveShadow = true;
+    scene.add(road);
+
+    // Los Santos urban asphalt & coastal valley ground plane
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(1000, 1000),
+      new THREE.MeshStandardMaterial({ color: 0x141622, roughness: .95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -.12;
+    scene.add(ground);
+
+    // Paved emergency shoulders, sloped concrete Jersey barriers (K-rails), frontage roads & sound walls
+    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x262936, roughness: .88, metalness: .06 });
+    const jerseyBaseMat = new THREE.MeshStandardMaterial({ color: 0x6c7380, roughness: .82, metalness: .1 });
+    const jerseyTopMat = new THREE.MeshStandardMaterial({ color: 0x858d9c, roughness: .75, metalness: .12 });
+    const soundWallMat = new THREE.MeshStandardMaterial({ color: 0x454a59, roughness: .86, metalness: .08 });
+    const frontageRoadMat = new THREE.MeshStandardMaterial({ color: 0x1e212d, roughness: .9, metalness: .05 });
+
+    for (const side of [-1, 1]) {
+      // Paved emergency shoulder strip outside the white edge line (x = ±6.5 to ±7.35)
+      const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 600), shoulderMat);
+      shoulder.position.set(side * 6.95, 0.01, -260);
+      scene.add(shoulder);
+
+      // California concrete Jersey barrier (K-rail): wide sloped base + narrow upper wall
+      const kRailBase = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.34, 600), jerseyBaseMat);
+      kRailBase.position.set(side * 7.35, 0.17, -260);
+      scene.add(kRailBase);
+
+      const kRailUpper = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.56, 600), jerseyTopMat);
+      kRailUpper.position.set(side * 7.35, 0.62, -260);
+      scene.add(kRailUpper);
+
+      // Frontage avenue / boulevard deck outside the freeway barrier (x = ±7.6 to ±14.2)
+      const frontage = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.14, 600), frontageRoadMat);
+      frontage.position.set(side * 10.9, 0.04, -260);
+      scene.add(frontage);
+
+      // Concrete freeway retaining / sound barrier wall at outer frontage edge (x = ±14.3)
+      const soundWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.45, 600), soundWallMat);
+      soundWall.position.set(side * 14.3, 0.72, -260);
+      scene.add(soundWall);
+    }
+
+    // Strict road & shoulder/barrier clearance guard so city structures never sit on the road
+    const roadClearanceMinX = 15.6;
+    function getSafeBuildingX(side, footprintHalfWidth, desiredOffsetFromWall = 2.0) {
+      const minCenterX = roadClearanceMinX + footprintHalfWidth;
+      const candidateX = roadClearanceMinX + Math.max(0.8, desiredOffsetFromWall) + footprintHalfWidth;
+      return side * Math.max(minCenterX, candidateX);
+    }
+    function assertClearOfRoad(xPos, halfExtentX, label = "city-prop") {
+      const innerEdge = Math.abs(xPos) - halfExtentX;
+      if (innerEdge < roadClearanceMinX - 0.01) {
+        const sign = xPos < 0 ? -1 : 1;
+        return sign * (roadClearanceMinX + halfExtentX);
+      }
+      return xPos;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. LOS SANTOS ARCHITECTURAL FACADE TEXTURES (GLASS TOWERS, ART DECO, MAZE)
+    // -------------------------------------------------------------------------
+    function createBuildingFacadeStyle(options) {
+      const width = 512;
+      const height = 1024;
+      const colorCanvas = document.createElement("canvas");
+      colorCanvas.width = width;
+      colorCanvas.height = height;
+      const cCtx = colorCanvas.getContext("2d");
+
+      const emissiveCanvas = document.createElement("canvas");
+      emissiveCanvas.width = width;
+      emissiveCanvas.height = height;
+      const eCtx = emissiveCanvas.getContext("2d");
+
+      cCtx.fillStyle = options.wallColor;
+      cCtx.fillRect(0, 0, width, height);
+      eCtx.fillStyle = "#000000";
+      eCtx.fillRect(0, 0, width, height);
+
+      const cols = options.cols;
+      const rows = options.rows;
+      const padX = Math.floor(width / cols);
+      const padY = Math.floor(height / rows);
+
+      // Architectural concrete/steel mullions and spandrel bands
+      cCtx.fillStyle = options.trimColor;
+      for (let col = 0; col <= cols; col++) {
+        cCtx.fillRect(col * padX - 2, 0, 4, height);
+      }
+      for (let row = 0; row <= rows; row++) {
+        cCtx.fillRect(0, row * padY - 3, width, 6);
+      }
+
+      let seed = options.seed;
+      const nextRand = () => {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+      };
+
+      const marginX = Math.max(4, Math.floor(padX * 0.14));
+      const marginY = Math.max(5, Math.floor(padY * 0.18));
+      const winW = padX - marginX * 2;
+      const winH = padY - marginY * 2;
+
+      for (let row = 0; row < rows; row++) {
+        const floorRoll = nextRand();
+        const isMechanicalFloor = row > 3 && row % 12 === 0;
+        const isBusyOfficeFloor = !isMechanicalFloor && floorRoll < 0.18;
+
+        for (let col = 0; col < cols; col++) {
+          const x = col * padX + marginX;
+          const y = row * padY + marginY;
+
+          if (isMechanicalFloor) {
+            cCtx.fillStyle = "#10141f";
+            cCtx.fillRect(x, y, winW, winH);
+            continue;
+          }
+
+          const r = nextRand();
+          const litChance = isBusyOfficeFloor ? 0.74 : options.litDensity;
+          if (r < litChance) {
+            const toneRoll = nextRand();
+            let glassColor, glowColor;
+            if (toneRoll < options.warmRatio) {
+              // Warm Los Santos tungsten & golden office interiors
+              glassColor = nextRand() < 0.5 ? "#ffd485" : "#ffb35c";
+              glowColor = nextRand() < 0.5 ? "#ffb44c" : "#ff8d36";
+            } else {
+              // Crisp fluorescent cool-white & cyan conference rooms
+              glassColor = nextRand() < 0.5 ? "#bceeff" : "#e3f8ff";
+              glowColor = nextRand() < 0.5 ? "#78d4ff" : "#a8e8ff";
+            }
+
+            cCtx.fillStyle = glassColor;
+            cCtx.fillRect(x, y, winW, winH);
+            eCtx.fillStyle = glowColor;
+            eCtx.fillRect(x, y, winW, winH);
+
+            // Venetian blinds / interior ceiling slab detail
+            cCtx.fillStyle = "rgba(22, 26, 40, 0.34)";
+            cCtx.fillRect(x, y, winW, Math.max(2, Math.floor(winH * 0.24)));
+            eCtx.fillStyle = "rgba(0, 0, 0, 0.38)";
+            eCtx.fillRect(x, y, winW, Math.max(2, Math.floor(winH * 0.24)));
+          } else {
+            // Reflective tinted curtain-wall glass reflecting twilight sunset sky
+            cCtx.fillStyle = options.darkGlassColor;
+            cCtx.fillRect(x, y, winW, winH);
+            cCtx.fillStyle = (row + col) % 3 === 0
+              ? "rgba(235, 138, 112, 0.14)"
+              : "rgba(132, 168, 224, 0.11)";
+            cCtx.fillRect(x, y, Math.floor(winW * 0.55), winH);
+          }
+        }
+      }
+
+      if (options.crownColor) {
+        cCtx.fillStyle = options.crownColor;
+        cCtx.fillRect(0, 5, width, 12);
+        eCtx.fillStyle = options.crownColor;
+        eCtx.fillRect(0, 5, width, 12);
+      }
+
+      const map = new THREE.CanvasTexture(colorCanvas);
+      map.colorSpace = THREE.SRGBColorSpace;
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.anisotropy = maxAnisotropy;
+
+      const emissiveMap = new THREE.CanvasTexture(emissiveCanvas);
+      emissiveMap.colorSpace = THREE.SRGBColorSpace;
+      emissiveMap.wrapS = emissiveMap.wrapT = THREE.RepeatWrapping;
+      emissiveMap.anisotropy = maxAnisotropy;
+
+      return new THREE.MeshStandardMaterial({
+        map,
+        emissive: new THREE.Color(0xffffff),
+        emissiveMap,
+        emissiveIntensity: options.emissiveIntensity,
+        roughness: 0.42,
+        metalness: 0.38
+      });
+    }
+
+    const facadeMaterials = [
+      // Style 0: Maze Bank / US Bank Cylindrical Financial Curtain-Wall Glass
+      createBuildingFacadeStyle({
+        seed: 101,
+        wallColor: "#1b2436",
+        trimColor: "#101622",
+        darkGlassColor: "#182438",
+        cols: 12,
+        rows: 22,
+        litDensity: 0.36,
+        warmRatio: 0.68,
+        crownColor: "#ff3b4e",
+        emissiveIntensity: 1.28
+      }),
+      // Style 1: Downtown LS Warm Limestone & Bronze Financial Tower
+      createBuildingFacadeStyle({
+        seed: 202,
+        wallColor: "#292533",
+        trimColor: "#17141f",
+        darkGlassColor: "#1b1926",
+        cols: 7,
+        rows: 17,
+        litDensity: 0.40,
+        warmRatio: 0.82,
+        crownColor: "#ffb057",
+        emissiveIntensity: 1.22
+      }),
+      // Style 2: Arcadius / FIB Blue-Steel Curtain-Wall Skyscraper
+      createBuildingFacadeStyle({
+        seed: 303,
+        wallColor: "#17273a",
+        trimColor: "#0e1826",
+        darkGlassColor: "#132336",
+        cols: 10,
+        rows: 22,
+        litDensity: 0.33,
+        warmRatio: 0.35,
+        crownColor: "#68e0db",
+        emissiveIntensity: 1.3
+      }),
+      // Style 3: Art Deco Sandstone & Terracotta High-Rise
+      createBuildingFacadeStyle({
+        seed: 404,
+        wallColor: "#2e242c",
+        trimColor: "#1a1319",
+        darkGlassColor: "#1c1720",
+        cols: 6,
+        rows: 15,
+        litDensity: 0.34,
+        warmRatio: 0.86,
+        crownColor: "#ff785a",
+        emissiveIntensity: 1.18
+      })
+    ];
+
+    const distantSkylineMaterials = [
+      createBuildingFacadeStyle({
+        seed: 505,
+        wallColor: "#181d30",
+        trimColor: "#101422",
+        darkGlassColor: "#13192b",
+        cols: 9,
+        rows: 20,
+        litDensity: 0.24,
+        warmRatio: 0.62,
+        crownColor: "#d9536f",
+        emissiveIntensity: 0.78
+      }),
+      createBuildingFacadeStyle({
+        seed: 606,
+        wallColor: "#1d1c2e",
+        trimColor: "#12111f",
+        darkGlassColor: "#161526",
+        cols: 7,
+        rows: 18,
+        litDensity: 0.22,
+        warmRatio: 0.74,
+        crownColor: "#c97a4b",
+        emissiveIntensity: 0.74
+      })
+    ];
+
+    // -------------------------------------------------------------------------
+    // 4. LOS SANTOS BILLBOARDS, STOREFRONT FASCIAS & CALIFORNIA PALM TREES
+    // -------------------------------------------------------------------------
+    const signConfigs = [
+      { title: "MAZE BANK", sub: "DOWNTOWN LS", bg: "#290c14", accent: "#ff3b4e", text: "#ffffff", vertical: false },
+      { title: "VINEWOOD", sub: "BOULEVARD", bg: "#14182b", accent: "#ffb85c", text: "#fff8eb", vertical: true },
+      { title: "LS CUSTOMS", sub: "24/7 PERFORMANCE", bg: "#1c1426", accent: "#ff6b4a", text: "#fff2eb", vertical: false },
+      { title: "DEL PERRO", sub: "BEACH & PIER", bg: "#0d2330", accent: "#68e0db", text: "#ebfffe", vertical: true },
+      { title: "24/7 STORE", sub: "OPEN ALL NIGHT", bg: "#0e261b", accent: "#4ade80", text: "#f2fff7", vertical: false }
+    ];
+
+    const neonSignMaterials = signConfigs.map(cfg => {
+      const w = cfg.vertical ? 128 : 256;
+      const h = cfg.vertical ? 384 : 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = cfg.bg;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = cfg.accent;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(6, 6, w - 12, h - 12);
+
+      ctx.fillStyle = cfg.accent;
+      if (cfg.vertical) {
+        ctx.fillRect(14, 14, w - 28, 22);
+        ctx.fillRect(14, h - 36, w - 28, 22);
+
+        ctx.fillStyle = cfg.text;
+        ctx.font = "900 28px 'Barlow Condensed', Arial, sans-serif";
+        ctx.textAlign = "center";
+        const chars = cfg.title.replace(/\s+/g, "").split("");
+        const step = Math.min(34, (h - 105) / Math.max(1, chars.length));
+        chars.forEach((ch, idx) => {
+          ctx.fillText(ch, w / 2, 74 + idx * step);
+        });
+      } else {
+        ctx.fillRect(14, 14, 14, h - 28);
+        ctx.fillStyle = cfg.text;
+        ctx.font = "900 38px 'Barlow Condensed', Arial, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(cfg.title, 40, 62);
+
+        ctx.fillStyle = cfg.accent;
+        ctx.font = "700 18px 'DM Sans', Arial, sans-serif";
+        ctx.fillText(cfg.sub, 42, 92);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAnisotropy;
+
+      return {
+        vertical: cfg.vertical,
+        material: new THREE.MeshStandardMaterial({
+          map: tex,
+          emissive: new THREE.Color(0xffffff),
+          emissiveMap: tex,
+          emissiveIntensity: 1.4,
+          roughness: 0.3
+        })
+      };
+    });
+
+    // Procedural California Fan Palm builder (curved trunk + layered palm frond crown)
+    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x3b312d, roughness: 0.92 });
+    const palmFrondMat = new THREE.MeshStandardMaterial({
+      color: 0x1e3829,
+      roughness: 0.78,
+      side: THREE.DoubleSide
+    });
+    const palmFrondGeometry = new THREE.ConeGeometry(1.75, 0.85, 6, 1, true);
+    const palmSegmentGeo = new THREE.CylinderGeometry(1, 1, 1, 5);
+
+    function createPalmTree(height = 9.5, lean = 0.25) {
+      const palm = new THREE.Group();
+      const segments = 4;
+      const segH = height / segments;
+      let curX = 0;
+      let curY = 0;
+
+      for (let s = 0; s < segments; s++) {
+        const t = s / segments;
+        const rBottom = 0.22 * (1 - t * 0.45);
+        const rTop = 0.22 * (1 - (t + 0.25) * 0.45);
+        const seg = new THREE.Mesh(palmSegmentGeo, palmTrunkMat);
+        const stepX = Math.sin(t * 1.4) * lean * 0.45;
+        seg.position.set(curX + stepX * 0.5, curY + segH * 0.5, 0);
+        seg.scale.set(rTop, segH * 1.06, rBottom);
+        seg.rotation.z = -stepX * 0.65;
+        palm.add(seg);
+        curX += stepX;
+        curY += segH;
+      }
+
+      // Layered California fan-palm frond crown
+      const upperCrown = new THREE.Mesh(palmFrondGeometry, palmFrondMat);
+      upperCrown.position.set(curX, curY + 0.15, 0);
+      upperCrown.scale.set(0.95, 1.1, 0.95);
+      palm.add(upperCrown);
+
+      const lowerCrown = new THREE.Mesh(palmFrondGeometry, palmFrondMat);
+      lowerCrown.position.set(curX, curY - 0.15, 0);
+      lowerCrown.rotation.y = Math.PI / 7;
+      lowerCrown.scale.set(1.25, 0.9, 1.25);
+      palm.add(lowerCrown);
+
+      return palm;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. ICONIC LOS SANTOS SKYLINE (MAZE BANK TOWER, STEPPED TOWERS, HELIPADS)
+    // -------------------------------------------------------------------------
+    const city = new THREE.Group();
+    scene.add(city);
+
+    const podiumMat = new THREE.MeshStandardMaterial({ color: 0x202330, roughness: 0.8, metalness: 0.18 });
+    const roofTrimMat = new THREE.MeshStandardMaterial({ color: 0x32374a, roughness: 0.62, metalness: 0.35 });
+    const hvacMat = new THREE.MeshStandardMaterial({ color: 0x454d61, roughness: 0.7, metalness: 0.4 });
+    const spireMat = new THREE.MeshStandardMaterial({ color: 0x6c7a91, roughness: 0.38, metalness: 0.72 });
+    const spireGeo = new THREE.CylinderGeometry(0.05, 0.16, 1, 5);
+    const beaconGeo = new THREE.SphereGeometry(0.24, 6, 6);
+    const helipadGeo = new THREE.RingGeometry(1.6, 2.1, 12);
+    const mazeCrownMat = new THREE.MeshBasicMaterial({ color: 0xff3b4e, toneMapped: false });
+    const crownNeonColors = [0xff3b4e, 0xffb057, 0x68e0db, 0xff6b4a, 0x7cb8ff];
+    const crownNeonMaterials = crownNeonColors.map(color =>
+      new THREE.MeshBasicMaterial({ color, toneMapped: false })
+    );
+    const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0xff3344, toneMapped: false });
+    const helipadMaterial = new THREE.MeshBasicMaterial({ color: 0xffc857, toneMapped: false });
+
+    const cityBlocks = [];
+    const aviationBeacons = [];
+    const blockCount = 12;
+    const blockSpacing = 26;
+
+    for (let block = 0; block < blockCount; block++) {
+      const group = new THREE.Group();
+      group.position.z = -block * blockSpacing;
+
+      for (const side of [-1, 1]) {
+        const isMazeLandmark = (block === 3 && side === 1) || (block === 9 && side === -1);
+        const height = isMazeLandmark ? 46 : (15 + Math.random() * 25);
+        const width = isMazeLandmark ? 12.5 : (9.5 + Math.random() * 6.5);
+        const depth = isMazeLandmark ? 12.5 : (12 + Math.random() * 7);
+        const footprintHalfWidth = width * 0.5 + 0.6;
+        const desiredOffset = isMazeLandmark ? 3.2 : (1.4 + Math.random() * 4.2);
+        const xPos = assertClearOfRoad(
+          getSafeBuildingX(side, footprintHalfWidth, desiredOffset),
+          footprintHalfWidth,
+          `tower-${block}-${side}`
+        );
+        const zPos = (Math.random() - 0.5) * 7;
+
+        const facadeMat = isMazeLandmark
+          ? facadeMaterials[0]
+          : facadeMaterials[(block * 2 + (side > 0 ? 1 : 0)) % facadeMaterials.length];
+
+        let roofTopY = height - 0.1;
+
+        if (isMazeLandmark) {
+          // Iconic Maze Bank-inspired cylindrical/tiered skyscraper with red illuminated crown
+          const baseCyl = new THREE.Mesh(
+            new THREE.CylinderGeometry(width * 0.48, width * 0.54, height * 0.72, 12),
+            facadeMat
+          );
+          baseCyl.position.set(xPos, (height * 0.72) / 2 - 0.1, zPos);
+          group.add(baseCyl);
+
+          const midCyl = new THREE.Mesh(
+            new THREE.CylinderGeometry(width * 0.39, width * 0.45, height * 0.28, 12),
+            facadeMat
+          );
+          midCyl.position.set(xPos, height * 0.72 + (height * 0.28) / 2 - 0.1, zPos);
+          group.add(midCyl);
+
+          // Glowing crimson Maze Bank crown ring + rooftop helipad deck
+          const crownRing = new THREE.Mesh(
+            new THREE.CylinderGeometry(width * 0.41, width * 0.41, 0.55, 12, 1, true),
+            mazeCrownMat
+          );
+          crownRing.position.set(xPos, roofTopY - 0.35, zPos);
+          group.add(crownRing);
+
+          const helipadRing = new THREE.Mesh(
+            helipadGeo,
+            helipadMaterial
+          );
+          helipadRing.rotation.x = -Math.PI / 2;
+          helipadRing.position.set(xPos, roofTopY + 0.05, zPos);
+          group.add(helipadRing);
+        } else {
+          // Standard Los Santos financial / Art Deco high-rise
+          const tower = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), facadeMat);
+          tower.position.set(xPos, height / 2 - 0.1, zPos);
+          group.add(tower);
+
+          const tierNeon = crownNeonMaterials[(block + (side > 0 ? 2 : 0)) % crownNeonMaterials.length];
+          if (height > 22) {
+            const upperH = 4.5 + Math.random() * 6.5;
+            const upperW = width * 0.68;
+            const upperD = depth * 0.68;
+            const upperTier = new THREE.Mesh(new THREE.BoxGeometry(upperW, upperH, upperD), facadeMat);
+            upperTier.position.set(xPos, roofTopY + upperH / 2, zPos);
+            group.add(upperTier);
+
+            const crownRing = new THREE.Mesh(
+              new THREE.BoxGeometry(upperW + 0.24, 0.24, upperD + 0.24),
+              tierNeon
+            );
+            crownRing.position.set(xPos, roofTopY + upperH - 0.2, zPos);
+            group.add(crownRing);
+            roofTopY += upperH;
+          } else {
+            const parapet = new THREE.Mesh(
+              new THREE.BoxGeometry(width + 0.3, 0.45, depth + 0.3),
+              roofTrimMat
+            );
+            parapet.position.set(xPos, roofTopY + 0.2, zPos);
+            group.add(parapet);
+
+            // Rooftop HVAC mechanical penthouse unit
+            const hvac = new THREE.Mesh(
+              new THREE.BoxGeometry(width * 0.35, 1.35, depth * 0.35),
+              hvacMat
+            );
+            hvac.position.set(xPos, roofTopY + 0.85, zPos);
+            group.add(hvac);
+          }
+        }
+
+        // Street-level Los Santos commercial podium & glowing storefront fascia
+        const podiumHeight = 2.8 + Math.random() * 1.2;
+        const podium = new THREE.Mesh(
+          new THREE.BoxGeometry(width + 0.9, podiumHeight, depth + 0.9),
+          podiumMat
+        );
+        podium.position.set(xPos, podiumHeight / 2 - 0.1, zPos);
+        group.add(podium);
+
+        const canopyNeon = isMazeLandmark
+          ? mazeCrownMat
+          : crownNeonMaterials[(block + (side > 0 ? 2 : 0)) % crownNeonMaterials.length];
+        const canopyStrip = new THREE.Mesh(
+          new THREE.BoxGeometry(width + 1.05, 0.2, depth + 1.05),
+          canopyNeon
+        );
+        canopyStrip.position.set(xPos, podiumHeight - 0.15, zPos);
+        group.add(canopyStrip);
+
+        // Rooftop spire & blinking red aircraft warning beacon
+        if (isMazeLandmark || (height > 25 && (block + (side > 0 ? 1 : 0)) % 2 === 0)) {
+          const spireH = isMazeLandmark ? 6.5 : (4.2 + Math.random() * 3.5);
+          const spire = new THREE.Mesh(spireGeo, spireMat);
+          spire.scale.set(1, spireH, 1);
+          spire.position.set(xPos, roofTopY + spireH / 2, zPos);
+          group.add(spire);
+
+          const beacon = new THREE.Mesh(beaconGeo, beaconMaterial);
+          beacon.position.set(xPos, roofTopY + spireH + 0.15, zPos);
+          beacon.userData.phase = block * 0.9 + (side > 0 ? 1.5 : 0);
+          group.add(beacon);
+          aviationBeacons.push(beacon);
+        }
+
+        // Los Santos billboards & vertical signs clamped strictly outside the road clearance zone
+        if (!isMazeLandmark && (block + (side > 0 ? 1 : 0)) % 2 === 0) {
+          const signDef = neonSignMaterials[(block * 3 + (side > 0 ? 1 : 0)) % neonSignMaterials.length];
+          const signW = signDef.vertical ? 1.55 : 4.4;
+          const signH = signDef.vertical ? 5.2 : 1.8;
+          const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), signDef.material);
+
+          if (signDef.vertical) {
+            const rawSignX = xPos - side * (width / 2 + 0.65);
+            signMesh.position.set(
+              assertClearOfRoad(rawSignX, signW * 0.5, `vsign-${block}-${side}`),
+              Math.min(height * 0.55, 11.5),
+              zPos + depth * 0.25
+            );
+          } else {
+            const rawSignX = xPos - side * (width / 2 + 0.08);
+            signMesh.position.set(
+              assertClearOfRoad(rawSignX, 0.2, `hsign-${block}-${side}`),
+              Math.min(height * 0.48, 9.5),
+              zPos
+            );
+            signMesh.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+          }
+          group.add(signMesh);
+        }
+
+        // California fan palm trees safely placed outside the barrier/frontage corridor
+        const palm1X = assertClearOfRoad(side * 15.2, 0.6, `palm1-${block}-${side}`);
+        const palm1 = createPalmTree(8.5 + (block % 3) * 1.4, side * 0.22);
+        palm1.position.set(palm1X, 0.12, -blockSpacing * 0.25);
+        group.add(palm1);
+
+        if (block % 2 === 0) {
+          const palm2X = assertClearOfRoad(side * 15.35, 0.6, `palm2-${block}-${side}`);
+          const palm2 = createPalmTree(10.2 + ((block + 1) % 3) * 1.3, side * 0.28);
+          palm2.position.set(palm2X, 0.12, blockSpacing * 0.28);
+          group.add(palm2);
+        }
+
+        // Background distant Los Santos skyline silhouette towers well clear of the road
+        const bgHeight = 28 + Math.random() * 36;
+        const bgWidth = 14 + Math.random() * 10;
+        const bgDepth = 15 + Math.random() * 9;
+        const bgMat = distantSkylineMaterials[(block + (side > 0 ? 1 : 0)) % distantSkylineMaterials.length];
+        const bgTower = new THREE.Mesh(new THREE.BoxGeometry(bgWidth, bgHeight, bgDepth), bgMat);
+        const bgRawX = side * (38 + bgWidth / 2 + Math.random() * 18);
+        bgTower.position.set(
+          assertClearOfRoad(bgRawX, bgWidth * 0.5, `bgtower-${block}-${side}`),
+          bgHeight / 2 - 0.1,
+          (Math.random() - 0.5) * 14
+        );
+        group.add(bgTower);
+      }
+
+      city.add(group);
+      cityBlocks.push(group);
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. CALIFORNIA COBRA-HEAD FREEWAY LAMPS, SODIUM LIGHT POOLS & K-RAIL MARKERS
+    // -------------------------------------------------------------------------
+    const roadside = new THREE.Group();
+    scene.add(roadside);
+
+    const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x4b5566, metalness: 0.72, roughness: 0.34 });
+    const sodiumLampMat = new THREE.MeshBasicMaterial({ color: 0xffe4b5, toneMapped: false });
+    const kRailAmberMat = new THREE.MeshBasicMaterial({ color: 0xffaa3b, toneMapped: false });
+    const kRailWhiteMat = new THREE.MeshBasicMaterial({ color: 0xf4f7ff, toneMapped: false });
+
+    // Warm sodium-vapor highway light pool texture
+    const lightPoolCanvas = document.createElement("canvas");
+    lightPoolCanvas.width = 128;
+    lightPoolCanvas.height = 128;
+    const lpCtx = lightPoolCanvas.getContext("2d");
+    const lpGrad = lpCtx.createRadialGradient(64, 64, 4, 64, 64, 62);
+    lpGrad.addColorStop(0.0, "rgba(255, 204, 132, 0.28)");
+    lpGrad.addColorStop(0.48, "rgba(255, 178, 102, 0.12)");
+    lpGrad.addColorStop(1.0, "rgba(255, 165, 90, 0.0)");
+    lpCtx.fillStyle = lpGrad;
+    lpCtx.fillRect(0, 0, 128, 128);
+    const lightPoolTex = new THREE.CanvasTexture(lightPoolCanvas);
+    lightPoolTex.colorSpace = THREE.SRGBColorSpace;
+    const lightPoolMat = new THREE.MeshBasicMaterial({
+      map: lightPoolTex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const lampPosts = [];
+    const lampCount = 18;
+    const lampSpacing = 14;
+    const lampPoleGeo = new THREE.CylinderGeometry(0.065, 0.12, 6.4, 6);
+    const lampArmGeo = new THREE.BoxGeometry(1.85, 0.08, 0.08);
+    const lampHeadGeo = new THREE.BoxGeometry(0.62, 0.12, 0.28);
+    const lampBulbGeo = new THREE.PlaneGeometry(0.5, 0.22);
+    const lampPoolGeo = new THREE.PlaneGeometry(6.2, 7.8);
+    const kRailMarkerGeo = new THREE.BoxGeometry(0.06, 0.14, 0.18);
+
+    for (let i = 0; i < lampCount; i++) {
+      const pair = new THREE.Group();
+      pair.position.z = -i * lampSpacing;
+
+      for (const side of [-1, 1]) {
+        const x = side * 7.85;
+
+        // Tall galvanized steel freeway light pole behind K-rail
+        const pole = new THREE.Mesh(lampPoleGeo, lampPoleMat);
+        pole.position.set(x, 3.2, 0);
+        pair.add(pole);
+
+        // Sweeping California cobra-head mast arm overhanging the emergency shoulder & outer lane
+        const arm = new THREE.Mesh(lampArmGeo, lampPoleMat);
+        arm.position.set(x - side * 0.85, 6.45, 0);
+        arm.rotation.z = side * 0.14;
+        pair.add(arm);
+
+        const cobraHead = new THREE.Mesh(lampHeadGeo, lampPoleMat);
+        cobraHead.position.set(x - side * 1.68, 6.56, 0);
+        pair.add(cobraHead);
+
+        const bulb = new THREE.Mesh(lampBulbGeo, sodiumLampMat);
+        bulb.rotation.x = Math.PI / 2;
+        bulb.position.set(x - side * 1.68, 6.495, 0);
+        pair.add(bulb);
+
+        // Warm sodium-vapor light pool on freeway lanes
+        const pool = new THREE.Mesh(lampPoolGeo, lightPoolMat);
+        pool.rotation.x = -Math.PI / 2;
+        pool.position.set(x - side * 2.4, 0.026, 0);
+        pair.add(pool);
+
+        // Retro-reflective K-rail marker tabs (amber on left median, white on right shoulder)
+        const marker = new THREE.Mesh(
+          kRailMarkerGeo,
+          side < 0 ? kRailAmberMat : kRailWhiteMat
+        );
+        marker.position.set(side * 7.18, 0.72, 0);
+        pair.add(marker);
+      }
+
+      roadside.add(pair);
+      lampPosts.push(pair);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. OVERHEAD LOS SANTOS INTERSTATE / DEL PERRO FREEWAY TRUSS GANTRIES
+    // -------------------------------------------------------------------------
+    const gantryTexts = [
+      { route: "I-5 NORTH", dest: "DOWNTOWN LS // PILLBOX HILL", lane: "ALL LANES OPEN", accent: "#ffb85c" },
+      { route: "US-1 WEST", dest: "DEL PERRO FWY // BEACH", lane: "EXIT 14 AHEAD", accent: "#68e0db" },
+      { route: "I-2 EAST", dest: "VINEWOOD BLVD // LA MESA", lane: "THROUGH TRAFFIC", accent: "#ff6b4a" }
+    ];
+
+    const gantrySignMaterials = gantryTexts.map(info => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext("2d");
+
+      // Authentic California Interstate green freeway sign board
+      ctx.fillStyle = "#0b3b29";
+      ctx.fillRect(0, 0, 512, 128);
+
+      ctx.strokeStyle = "#f2f7f5";
+      ctx.lineWidth = 5;
+      ctx.strokeRect(6, 6, 500, 116);
+
+      ctx.fillStyle = info.accent;
+      ctx.fillRect(18, 18, 128, 30);
+      ctx.fillStyle = "#091418";
+      ctx.font = "800 20px 'Barlow Condensed', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(info.route, 82, 40);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 33px 'Barlow Condensed', Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(info.dest, 164, 46);
+
+      ctx.fillStyle = "#e8f5ef";
+      ctx.font = "700 20px 'DM Sans', Arial, sans-serif";
+      ctx.fillText(`↓   ${info.lane}   ↓`, 164, 92);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAnisotropy;
+
+      return new THREE.MeshStandardMaterial({
+        map: tex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveMap: tex,
+        emissiveIntensity: 0.92,
+        roughness: 0.35
+      });
+    });
+
+    const gantries = [];
+    const gantrySpacing = 115;
+    const gantryPillarGeo = new THREE.CylinderGeometry(0.19, 0.24, 7.8, 6);
+    const gantryUpperBeamGeo = new THREE.BoxGeometry(16.0, 0.22, 0.22);
+    const gantryLowerBeamGeo = new THREE.BoxGeometry(16.0, 0.18, 0.18);
+    const gantrySignGeo = new THREE.BoxGeometry(7.8, 1.9, 0.18);
+
+    for (let g = 0; g < 3; g++) {
+      const gantry = new THREE.Group();
+      gantry.position.z = -55 - g * gantrySpacing;
+
+      for (const side of [-1, 1]) {
+        const pillar = new THREE.Mesh(gantryPillarGeo, lampPoleMat);
+        pillar.position.set(side * 7.85, 3.9, 0);
+        gantry.add(pillar);
+      }
+
+      const upperBeam = new THREE.Mesh(gantryUpperBeamGeo, lampPoleMat);
+      upperBeam.position.set(0, 7.5, 0);
+      gantry.add(upperBeam);
+
+      const lowerBeam = new THREE.Mesh(gantryLowerBeamGeo, lampPoleMat);
+      lowerBeam.position.set(0, 6.55, 0);
+      gantry.add(lowerBeam);
+
+      const signBoard = new THREE.Mesh(
+        gantrySignGeo,
+        gantrySignMaterials[g % gantrySignMaterials.length]
+      );
+      signBoard.position.set(0, 6.98, 0.08);
+      gantry.add(signBoard);
+
+      scene.add(gantry);
+      gantries.push(gantry);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7B. CABLE-STAYED HARBOR BAY BRIDGE, WATER & SMOOTH CITY TRANSITION
+    // -------------------------------------------------------------------------
+    const bridgeGroup = new THREE.Group();
+    scene.add(bridgeGroup);
+
+    const bayWaterMat = new THREE.MeshStandardMaterial({
+      color: 0x0b1a2c,
+      roughness: 0.24,
+      metalness: 0.72
+    });
+    const bayWater = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), bayWaterMat);
+    bayWater.rotation.x = -Math.PI / 2;
+    bayWater.position.set(0, -3.6, -260);
+    bayWater.visible = false;
+    bridgeGroup.add(bayWater);
+
+    const bridgeDeckMat = new THREE.MeshStandardMaterial({
+      color: 0x242c3b,
+      roughness: 0.65,
+      metalness: 0.35
+    });
+    const bridgeGirderMat = new THREE.MeshStandardMaterial({
+      color: 0x3b465b,
+      roughness: 0.5,
+      metalness: 0.55
+    });
+    const bridgePylonMat = new THREE.MeshStandardMaterial({
+      color: 0x4d5a70,
+      roughness: 0.45,
+      metalness: 0.6
+    });
+    const bridgeCableMat = new THREE.LineBasicMaterial({
+      color: 0x9be8e4,
+      transparent: true,
+      opacity: 0.72
+    });
+    const bridgeCyanStripMat = new THREE.MeshBasicMaterial({ color: 0x68e0db, toneMapped: false });
+    const bridgeAmberStripMat = new THREE.MeshBasicMaterial({ color: 0xff9b54, toneMapped: false });
+
+    const bridgeSpanLength = 260;
+    const bridgeDeckGeo = new THREE.BoxGeometry(15.6, 0.75, bridgeSpanLength);
+    const bridgeGirderGeo = new THREE.BoxGeometry(0.45, 1.35, bridgeSpanLength);
+    const bridgeStripGeo = new THREE.BoxGeometry(0.14, 0.1, bridgeSpanLength);
+
+    const bridgeDeck = new THREE.Mesh(bridgeDeckGeo, bridgeDeckMat);
+    bridgeDeck.position.set(0, -0.4, -110);
+    bridgeGroup.add(bridgeDeck);
+
+    for (const side of [-1, 1]) {
+      const girder = new THREE.Mesh(bridgeGirderGeo, bridgeGirderMat);
+      girder.position.set(side * 7.65, -0.15, -110);
+      bridgeGroup.add(girder);
+
+      const strip = new THREE.Mesh(
+        bridgeStripGeo,
+        side < 0 ? bridgeCyanStripMat : bridgeAmberStripMat
+      );
+      strip.position.set(side * 7.42, 0.56, -110);
+      bridgeGroup.add(strip);
+    }
+
+    const pylonTowerUnits = [];
+    const pylonSpacing = 62;
+    const pylonCount = 4;
+    const pylonLegGeo = new THREE.BoxGeometry(0.95, 22, 0.95);
+    const pylonCrossGeo = new THREE.BoxGeometry(17.4, 0.9, 1.1);
+    const pylonPierGeo = new THREE.BoxGeometry(1.4, 5.5, 1.4);
+
+    for (let p = 0; p < pylonCount; p++) {
+      const pylonUnit = new THREE.Group();
+      pylonUnit.position.set(0, 0, -28 - p * pylonSpacing);
+
+      for (const side of [-1, 1]) {
+        const x = side * 8.1;
+        const leg = new THREE.Mesh(pylonLegGeo, bridgePylonMat);
+        leg.position.set(x, 10.6, 0);
+        pylonUnit.add(leg);
+
+        const pier = new THREE.Mesh(pylonPierGeo, bridgeGirderMat);
+        pier.position.set(x, -3.0, 0);
+        pylonUnit.add(pier);
+
+        const beacon = new THREE.Mesh(beaconGeo, beaconMaterial);
+        beacon.position.set(x, 21.85, 0);
+        beacon.userData.phase = p * 1.1 + (side > 0 ? 0.6 : 0);
+        pylonUnit.add(beacon);
+        aviationBeacons.push(beacon);
+
+        // Fan of stay cables anchoring the twin pylon tower to the bridge deck
+        const cablePts = [];
+        for (let c = -4; c <= 4; c++) {
+          if (c === 0) continue;
+          const deckZ = c * 3.4;
+          const anchorY = 12.5 + (4.5 - Math.abs(c)) * 1.85;
+          cablePts.push(new THREE.Vector3(x, anchorY, 0));
+          cablePts.push(new THREE.Vector3(side * 7.55, 0.45, deckZ));
+        }
+        const cableGeo = new THREE.BufferGeometry().setFromPoints(cablePts);
+        const cables = new THREE.LineSegments(cableGeo, bridgeCableMat);
+        pylonUnit.add(cables);
+      }
+
+      const upperStrut = new THREE.Mesh(pylonCrossGeo, bridgePylonMat);
+      upperStrut.position.set(0, 18.2, 0);
+      pylonUnit.add(upperStrut);
+
+      const midStrut = new THREE.Mesh(pylonCrossGeo, bridgePylonMat);
+      midStrut.position.set(0, 11.4, 0);
+      pylonUnit.add(midStrut);
+
+      bridgeGroup.add(pylonUnit);
+      pylonTowerUnits.push(pylonUnit);
+    }
+
+    const bridgeElevationMax = 3.2;
+    const bridgeStartMeters = 500;
+    const bridgeEndMeters = 1000;
+    const bridgeRampMeters = 25;
+    let currentBridgeWeight = 0;
+
+    function smoothStep01(t) {
+      const x = clamp(t, 0, 1);
+      return x * x * (3 - 2 * x);
+    }
+
+    function getBridgeWeightAtDistance(distMeters) {
+      if (distMeters <= bridgeStartMeters - bridgeRampMeters || distMeters >= bridgeEndMeters + bridgeRampMeters) {
+        return 0;
+      }
+      if (distMeters < bridgeStartMeters + bridgeRampMeters) {
+        return smoothStep01((distMeters - (bridgeStartMeters - bridgeRampMeters)) / (bridgeRampMeters * 2));
+      }
+      if (distMeters > bridgeEndMeters - bridgeRampMeters) {
+        return 1 - smoothStep01((distMeters - (bridgeEndMeters - bridgeRampMeters)) / (bridgeRampMeters * 2));
+      }
+      return 1;
+    }
+
+    function syncBridgeEnvironment(weight, motionDelta) {
+      const clampedWeight = clamp(weight, 0, 1);
+      const isBridgeActive = clampedWeight > 0.001;
+      currentBridgeWeight = isBridgeActive ? clampedWeight : 0;
+      const deckY = currentBridgeWeight * bridgeElevationMax;
+
+      bridgeGroup.visible = isBridgeActive;
+      road.position.y = 0.015 + deckY;
+
+      if (isBridgeActive) {
+        bridgeDeck.position.y = -0.4 + deckY;
+        for (let i = 1; i < bridgeGroup.children.length; i++) {
+          const child = bridgeGroup.children[i];
+          if (child === bayWater || child === bridgeDeck) continue;
+          if (child.userData.baseY === undefined) child.userData.baseY = child.position.y;
+          child.position.y = child.userData.baseY + deckY;
+        }
+
+        for (let p = 0; p < pylonTowerUnits.length; p++) {
+          const unit = pylonTowerUnits[p];
+          unit.position.z += motionDelta;
+          if (unit.position.z > 18) unit.position.z -= pylonCount * pylonSpacing;
+        }
+
+        bayWater.visible = currentBridgeWeight > 0.04;
+        bayWater.position.z = -240 - ((distance * 1.4) % 120);
+        bayWaterMat.roughness = 0.24 + (1 - currentBridgeWeight) * 0.7;
+      } else {
+        bayWater.visible = false;
+        bridgeDeck.position.y = -0.4;
+      }
+
+      // Keep Los Santos city blocks cleanly off the road and hide/lower only during the 500m-1000m bridge span
+      city.visible = currentBridgeWeight < 0.98;
+      city.position.y = -currentBridgeWeight * 55;
+      const cityXSpread = 1 + currentBridgeWeight * 1.8;
+      city.scale.set(cityXSpread, 1, 1);
+      roadside.position.y = deckY;
+      for (let g = 0; g < gantries.length; g++) {
+        if (gantries[g].userData.baseY === undefined) gantries[g].userData.baseY = gantries[g].position.y;
+        gantries[g].position.y = gantries[g].userData.baseY + deckY;
+      }
+
+      bikePivot.position.y = deckY;
+      for (let i = 0; i < traffic.length; i++) {
+        traffic[i].position.y = deckY;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. HIGH-SPEED WIND STREAK PARTICLES (GTA V VELOCITY FEEDBACK)
+    // -------------------------------------------------------------------------
+    const streakCount = 48;
+    const streakPositions = new Float32Array(streakCount * 6);
+    const streakData = [];
+    for (let i = 0; i < streakCount; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const sx = side * (3.2 + Math.random() * 6.5);
+      const sy = 0.5 + Math.random() * 4.2;
+      const sz = -Math.random() * 90;
+      const len = 2.2 + Math.random() * 3.5;
+      streakData.push({ x: sx, y: sy, z: sz, len });
+    }
+    const streakGeometry = new THREE.BufferGeometry();
+    streakGeometry.setAttribute("position", new THREE.BufferAttribute(streakPositions, 3));
+    const streakMaterial = new THREE.LineBasicMaterial({
+      color: 0xdbeeff,
+      transparent: true,
+      opacity: 0.0
+    });
+    const speedStreaks = new THREE.LineSegments(streakGeometry, streakMaterial);
+    speedStreaks.visible = false;
+    scene.add(speedStreaks);
+
+    // -------------------------------------------------------------------------
+    // 9. PLAYER BIKE, DIEGETIC SPEEDOMETER CONSOLE, HEADLIGHT & TAIL-LIGHT
+    // -------------------------------------------------------------------------
+    const bikePivot = new THREE.Group();
+    bikePivot.position.set(0, 0, 2.5);
+    scene.add(bikePivot);
+    const bike = new THREE.Group();
+    bikePivot.add(bike);
+    const consoleCanvas = document.createElement("canvas");
+    consoleCanvas.width = 512;
+    consoleCanvas.height = 256;
+    const consoleContext = consoleCanvas.getContext("2d");
+    const consoleTexture = new THREE.CanvasTexture(consoleCanvas);
+    consoleTexture.colorSpace = THREE.SRGBColorSpace;
+    const consoleMaterial = new THREE.MeshBasicMaterial({
+      map: consoleTexture,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    const bikeConsole = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .6), consoleMaterial);
+    bikeConsole.scale.setScalar(.3);
+    bikeConsole.position.set(0, 1.25, -.45);
+    bikeConsole.renderOrder = 10;
+    bike.add(bikeConsole);
+    let lastConsoleSpeed = -1;
+    let lastConsoleDistance = -1;
+    let lastConsoleUpdateTime = 0;
+    function updateBikeConsole(kmh, tripDistance, nowMs = performance.now(), force = false) {
+      const metres = Math.floor(tripDistance);
+      if (kmh === lastConsoleSpeed && metres === lastConsoleDistance) return;
+      if (!force && nowMs - lastConsoleUpdateTime < 45 && kmh !== 0) return;
+      lastConsoleSpeed = kmh;
+      lastConsoleDistance = metres;
+      lastConsoleUpdateTime = nowMs;
+      consoleContext.clearRect(0, 0, consoleCanvas.width, consoleCanvas.height);
+      consoleContext.textAlign = "center";
+      consoleContext.lineCap = "round";
+
+      const centerX = 256;
+      const centerY = 172;
+      const radius = 130;
+      const dialMaxKmh = 180;
+      consoleContext.beginPath();
+      consoleContext.arc(centerX, centerY, radius, Math.PI, Math.PI * 2);
+      consoleContext.strokeStyle = "rgba(104,224,219,.75)";
+      consoleContext.lineWidth = 5;
+      consoleContext.stroke();
+
+      // High-load amber zone between 110 and 140 KM/H
+      consoleContext.beginPath();
+      consoleContext.arc(
+        centerX,
+        centerY,
+        radius,
+        Math.PI + (110 / dialMaxKmh) * Math.PI,
+        Math.PI + (140 / dialMaxKmh) * Math.PI
+      );
+      consoleContext.strokeStyle = "#ffb84d";
+      consoleContext.lineWidth = 6;
+      consoleContext.stroke();
+
+      // Redline arc accent between 140 and 180 KM/H
+      consoleContext.beginPath();
+      consoleContext.arc(centerX, centerY, radius, Math.PI + (140 / dialMaxKmh) * Math.PI, Math.PI * 2);
+      consoleContext.strokeStyle = "#ff5d5d";
+      consoleContext.lineWidth = 6;
+      consoleContext.stroke();
+
+      for (let value = 0; value <= dialMaxKmh; value += 15) {
+        const angle = Math.PI + value / dialMaxKmh * Math.PI;
+        const isMajor = value % 30 === 0;
+        const innerRadius = isMajor ? 111 : 119;
+        const outerX = centerX + Math.cos(angle) * radius;
+        const outerY = centerY + Math.sin(angle) * radius;
+        consoleContext.beginPath();
+        consoleContext.moveTo(centerX + Math.cos(angle) * innerRadius, centerY + Math.sin(angle) * innerRadius);
+        consoleContext.lineTo(outerX, outerY);
+        const tickColor = value >= 140
+          ? "#ff5d5d"
+          : (value >= 110 ? "#ffb84d" : (isMajor ? "#d8e4e6" : "rgba(216,228,230,.55)"));
+        consoleContext.strokeStyle = tickColor;
+        consoleContext.lineWidth = isMajor ? 3 : 2;
+        consoleContext.stroke();
+        if (isMajor) {
+          consoleContext.fillStyle = value >= 140 ? "#ff5d5d" : (value >= 110 ? "#ffb84d" : "#d8e4e6");
+          consoleContext.font = "600 21px Arial, sans-serif";
+          consoleContext.fillText(String(value), centerX + Math.cos(angle) * 91, centerY + Math.sin(angle) * 91 + 7);
+        }
+      }
+
+      const needleAngle = Math.PI + Math.min(dialMaxKmh, Math.max(0, kmh)) / dialMaxKmh * Math.PI;
+      consoleContext.beginPath();
+      consoleContext.moveTo(centerX, centerY);
+      consoleContext.lineTo(centerX + Math.cos(needleAngle) * 91, centerY + Math.sin(needleAngle) * 91);
+      consoleContext.strokeStyle = "#ff875d";
+      consoleContext.lineWidth = 6;
+      consoleContext.stroke();
+      consoleContext.beginPath();
+      consoleContext.arc(centerX, centerY, 9, 0, Math.PI * 2);
+      consoleContext.fillStyle = "#ff875d";
+      consoleContext.fill();
+
+      consoleContext.fillStyle = "#68e0db";
+      consoleContext.font = "700 39px Arial, sans-serif";
+      consoleContext.fillText(String(kmh), centerX, 231);
+      consoleContext.fillStyle = "#c1cbd2";
+      consoleContext.font = "600 17px Arial, sans-serif";
+      consoleContext.fillText("KM/H", centerX, 251);
+      consoleContext.textAlign = "right";
+      consoleContext.fillStyle = "#68e0db";
+      consoleContext.font = "700 23px Arial, sans-serif";
+      consoleContext.fillText(`${metres} m`, 489, 247);
+      consoleTexture.needsUpdate = true;
+    }
+    updateBikeConsole(0, 0);
+    const playerHeadlight = new THREE.SpotLight(0xdceaff, 160, 70, .31, .55, 1.4);
+    playerHeadlight.position.set(0, 1.35, -.25);
+    playerHeadlight.target.position.set(0, 0, -24);
+    bikePivot.add(playerHeadlight);
+    bikePivot.add(playerHeadlight.target);
+
+    // Subtle crisp red tail-light beacon & ground glow on the player bike
+    const tailLightGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.24, 0.07, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xff2a3c, toneMapped: false })
+    );
+    tailLightGlow.position.set(0, 0.94, 0.92);
+    bike.add(tailLightGlow);
+    const loader = new GLTFLoader();
+    function prepareBikeModel(model) {
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const scale = 2.35 / Math.max(size.y, size.x, size.z);
+      model.scale.setScalar(scale);
+      model.rotation.y = Math.PI;
+      model.updateMatrixWorld(true);
+      const fittedBounds = new THREE.Box3().setFromObject(model);
+      const center = fittedBounds.getCenter(new THREE.Vector3());
+      model.position.x -= center.x;
+      model.position.y -= fittedBounds.min.y;
+      model.position.z -= center.z;
+      model.traverse(part => {
+        if (part.isMesh) { part.castShadow = true; part.receiveShadow = true; }
+      });
+      return model;
+    }
+    function renderGarageSelection() {
+      const option = bikeOptions[selectedBikeIndex];
+      const owned = ownedBikeIndices.includes(selectedBikeIndex);
+      const canAfford = coinBalance >= option.price;
+      garageBikeIndex.textContent = `BIKE ${String(selectedBikeIndex + 1).padStart(2, "0")} / ${String(bikeOptions.length).padStart(2, "0")}`;
+      garageBikeName.textContent = option.name.toUpperCase();
+      garageBikeDescription.textContent = option.description;
+      menuBikeName.textContent = option.name;
+      bikePriceLabel.textContent = owned ? "OWNED" : (canAfford ? "PRICE" : "NEED MORE COINS");
+      bikePriceReadout.textContent = owned ? "READY TO RIDE" : `◈ ${option.price.toLocaleString()} COINS`;
+      bikeBuyButton.textContent = owned ? "SELECT BIKE" : `BUY · ${option.price.toLocaleString()} COINS`;
+      bikeBuyButton.disabled = !owned && !canAfford;
+      bikeBuyButton.style.opacity = bikeBuyButton.disabled ? ".55" : "1";
+      const model = bikeModels[selectedBikeIndex];
+      if (model && model !== activeBikeModel) {
+        if (activeBikeModel) bike.remove(activeBikeModel);
+        activeBikeModel = model;
+        bike.add(activeBikeModel);
+      }
+    }
+    renderGarageSelection();
+    Promise.all(bikeOptions.map(option =>
+      loader.loadAsync(option.file).then(gltf => prepareBikeModel(gltf.scene))
+    )).then(models => {
+      bikeModels = models;
+      renderGarageSelection();
+    }).catch(error => {
+      console.error("Could not load bike models:", error);
+      statusReadout.textContent = "Bike model unavailable";
+    });
+    loader.loadAsync("./Garage.glb").then(gltf => {
+      const model = gltf.scene;
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const scale = 44 / Math.max(size.x, size.z);
+      model.scale.setScalar(scale);
+      model.updateMatrixWorld(true);
+      const fittedBounds = new THREE.Box3().setFromObject(model);
+      const center = fittedBounds.getCenter(new THREE.Vector3());
+      model.position.x -= center.x;
+      model.position.y -= fittedBounds.min.y;
+      model.position.z -= center.z;
+      model.updateMatrixWorld(true);
+      model.traverse(part => {
+        if (part.isMesh) {
+          part.castShadow = true;
+          part.receiveShadow = true;
+          const partBounds = new THREE.Box3().setFromObject(part);
+          const partSize = partBounds.getSize(new THREE.Vector3());
+          const partCenter = partBounds.getCenter(new THREE.Vector3());
+          // Use an open-roof cutaway so the bike inside the house stays visible.
+          if (partSize.x > 6 && partSize.z > 3 && partSize.y < 1.1 && partCenter.y > 0.3) {
+            part.visible = false;
+          }
+        }
+      });
+      garageScene.add(model);
+    }).catch(error => {
+      console.error("Could not load Garage.glb:", error);
+      statusReadout.textContent = "Garage model unavailable";
+    });
+
+    // -------------------------------------------------------------------------
+    // 10. TRAFFIC CARS, LANE-CHANGING AI & GAMEPLAY LOOP
+    // -------------------------------------------------------------------------
+    const traffic = [];
+    let trafficTemplates = [];
+    let nextTrafficTemplate = 0;
+    const randomTrafficSpeed = () => (40 + Math.random() * 10) / 2.55;
+    const lanes = [-4, 0, 4];
+    function setTrafficLane(car, laneIndex) {
+      car.userData.laneIndex = laneIndex;
+      car.userData.targetLaneX = lanes[laneIndex];
+    }
+    function setNextTrafficModel(car) {
+      if (!trafficTemplates.length) return;
+      car.clear();
+      car.add(trafficTemplates[nextTrafficTemplate].clone(true));
+      nextTrafficTemplate = (nextTrafficTemplate + 1) % trafficTemplates.length;
+    }
+    const trafficLoader = new GLTFLoader();
+    Promise.all([
+      "./TrafficCar01.glb",
+      "./TrafficCar02.glb",
+      "./TrafficCar03.glb",
+      "./sport_car_low_poly.glb",
+      "./lowpoly_mpvsuv.glb"
+    ].map(url =>
+      trafficLoader.loadAsync(url).then(gltf => {
+        let sources = [gltf.scene];
+        if (url.endsWith("sport_car_low_poly.glb")) {
+          const modelRoot = gltf.scene.getObjectByName("GLTF_SceneRootNode");
+          sources = modelRoot ? modelRoot.children.filter(child => child.name.startsWith("glr-body")) : [];
+          if (sources.length !== 3) {
+            throw new Error("sport_car_low_poly.glb should contain three car models.");
+          }
+        } else if (url.endsWith("lowpoly_mpvsuv.glb")) {
+          const modelRoot = gltf.scene.getObjectByName("GLTF_SceneRootNode");
+          sources = modelRoot ? modelRoot.children.filter(child => child.name.startsWith("body")) : [];
+          if (sources.length !== 2) {
+            throw new Error("lowpoly_mpvsuv.glb should contain two car models.");
+          }
+        }
+
+        return sources.map(source => {
+          const template = source.clone(true);
+          if (source !== gltf.scene) {
+            source.updateWorldMatrix(true, false);
+            source.matrixWorld.decompose(template.position, template.quaternion, template.scale);
+            template.matrixAutoUpdate = true;
+            template.updateMatrix();
+          }
+          const bounds = new THREE.Box3().setFromObject(template);
+          const size = bounds.getSize(new THREE.Vector3());
+          const scale = 3.4 * 1.3 / Math.max(size.x, size.z);
+          template.scale.setScalar(scale);
+          template.updateMatrixWorld(true);
+          const fittedBounds = new THREE.Box3().setFromObject(template);
+          const center = fittedBounds.getCenter(new THREE.Vector3());
+          template.position.x -= center.x;
+          template.position.z -= center.z;
+          template.position.y -= fittedBounds.min.y;
+          template.rotation.y = Math.PI;
+          template.traverse(part => {
+            if (part.isMesh) {
+              part.castShadow = false;
+              part.receiveShadow = false;
+              if (url.endsWith("TrafficCar02.glb")) {
+                const materials = Array.isArray(part.material) ? part.material : [part.material];
+                for (const material of materials) {
+                  material.transparent = false;
+                  material.opacity = 1;
+                  material.depthWrite = true;
+                }
+              }
+            }
+          });
+          return template;
+        });
+      })
+    )).then(templateSets => {
+      trafficTemplates = templateSets.reduce((all, set) => all.concat(set), []);
+      for (let i = 0; i < 8; i++) {
+        const car = new THREE.Group();
+        car.userData.laneIndex = 1;
+        car.userData.targetLaneX = 0;
+        car.userData.laneChangeTimer = 8 + Math.random() * 10;
+        car.userData.speed = randomTrafficSpeed();
+        setNextTrafficModel(car);
+        setTrafficLane(car, Math.floor(Math.random() * lanes.length));
+        car.position.set(car.userData.targetLaneX, 0, -30 - i * 22);
+        scene.add(car);
+        traffic.push(car);
+      }
+    }).catch(error => {
+      console.error("Could not load traffic car models:", error);
+      statusReadout.textContent = "Traffic model unavailable";
+    });
+
+    let running = false, distance = 0, speed = 0, targetX = 0, cameraRoll = 0;
+    let lastTime = performance.now();
+    let fpsLastTime = lastTime;
+    let fpsFrameCount = 0;
+    let lowFpsReadings = 0;
+    let best = Number(localStorage.getItem("neon-run-best") || 0);
+    bestReadout.textContent = String(best);
+    const keys = new Set();
+    const clamp = THREE.MathUtils.clamp;
+    const minimumSpeedKmh = 40;
+    const minimumSpeed = minimumSpeedKmh / 2.55;
+    const maxSpeedKmh = 180;
+    const maxSpeed = maxSpeedKmh / 2.55;
+
+    function resetGame() {
+      distance = 0; speed = minimumSpeed; targetX = 0; currentBridgeWeight = 0;
+      bikePivot.position.set(0, 0, 2.5);
+      bike.rotation.set(0, 0, 0);
+      traffic.forEach((car, index) => {
+        setTrafficLane(car, index % 2 === 0 ? 0 : 2);
+        car.position.x = car.userData.targetLaneX;
+        car.position.y = 0;
+        car.position.z = -36 - index * 27;
+        car.rotation.set(0, 0, 0);
+        car.userData.speed = randomTrafficSpeed();
+        car.userData.laneChangeTimer = 8 + Math.random() * 10;
+        car.visible = true;
+      });
+      syncBridgeEnvironment(getBridgeWeightAtDistance(0), 0);
+      distanceReadout.textContent = "0";
+      speedReadout.textContent = String(minimumSpeedKmh);
+      updateBikeConsole(minimumSpeedKmh, 0, performance.now(), true);
+    }
+    function showMenu() {
+      running = false;
+      keys.clear();
+      overlay.classList.add("hidden");
+      cameraPanel.hidden = true;
+      cameraToggle.setAttribute("aria-expanded", "false");
+      rideCameraControls.hidden = false;
+      garageCameraControls.hidden = true;
+      appMode = "menu";
+      document.body.classList.remove("ride-mode");
+      garageScene.remove(bikePivot);
+      scene.add(bikePivot);
+      bikePivot.position.set(0, 0, 2.5);
+      bikePivot.scale.setScalar(1);
+      bike.rotation.set(0, 0, 0);
+      camera.position.set(0, 3.4, 9);
+      camera.fov = cameraSettings.fov;
+      camera.updateProjectionMatrix();
+      menuScreen.hidden = false;
+      garageScreen.hidden = true;
+      renderGarageSelection();
+      statusReadout.textContent = "Engine ready";
+    }
+    function openGarage() {
+      running = false;
+      keys.clear();
+      appMode = "garage";
+      document.body.classList.remove("ride-mode");
+      menuScreen.hidden = true;
+      garageScreen.hidden = false;
+      overlay.classList.add("hidden");
+      rideCameraControls.hidden = true;
+      garageCameraControls.hidden = false;
+      scene.remove(bikePivot);
+      garageScene.add(bikePivot);
+      // Center the bike on the interior floor in Garage.glb.
+      bikePivot.position.set(-11.2, 0, 0.6);
+      bikePivot.scale.setScalar(0.65);
+      bike.rotation.set(0, garageBikeRotationY, 0);
+      applyGarageCameraSettings();
+      camera.lookAt(-11.2, 0.5, 0.6);
+      renderGarageSelection();
+    }
+    function stepGarageBike(direction) {
+      selectedBikeIndex = (selectedBikeIndex + direction + bikeOptions.length) % bikeOptions.length;
+      renderGarageSelection();
+    }
+    document.querySelector("#open-garage").addEventListener("click", openGarage);
+    document.querySelector("#garage-close").addEventListener("click", () => {
+      selectedBikeIndex = Number(localStorage.getItem("neon-run-bike") || 0);
+      showMenu();
+    });
+    document.querySelector("#bike-prev").addEventListener("click", () => stepGarageBike(-1));
+    document.querySelector("#bike-next").addEventListener("click", () => stepGarageBike(1));
+    document.querySelector("#drive").addEventListener("click", startGame);
+    bikeBuyButton.addEventListener("click", () => {
+      const option = bikeOptions[selectedBikeIndex];
+      if (!ownedBikeIndices.includes(selectedBikeIndex)) {
+        if (coinBalance < option.price) return;
+        coinBalance -= option.price;
+        ownedBikeIndices.push(selectedBikeIndex);
+        localStorage.setItem("neon-run-coins", String(coinBalance));
+        localStorage.setItem("neon-run-owned-bikes", JSON.stringify(ownedBikeIndices));
+      }
+      localStorage.setItem("neon-run-bike", String(selectedBikeIndex));
+      updateCoinBalance();
+      showMenu();
+    });
+    function startGame() {
+      try {
+        keys.clear();
+        appMode = "ride";
+        document.body.classList.add("ride-mode");
+        menuScreen.hidden = true;
+        garageScreen.hidden = true;
+        cameraPanel.hidden = true;
+        cameraToggle.setAttribute("aria-expanded", "false");
+        rideCameraControls.hidden = false;
+        garageCameraControls.hidden = true;
+        garageScene.remove(bikePivot);
+        scene.add(bikePivot);
+        bikePivot.scale.setScalar(1);
+        bike.rotation.y = 0;
+        camera.position.set(0, cameraSettings.height, cameraSettings.distance);
+        camera.fov = cameraSettings.fov;
+        camera.updateProjectionMatrix();
+        resetGame();
+        overlay.classList.add("hidden");
+        running = true;
+        statusReadout.textContent = "Ride in progress";
+      } catch (err) {
+        console.error("Start game error:", err);
+        overlay.classList.add("hidden");
+        running = true;
+        statusReadout.textContent = "Ride in progress";
+      }
+    }
+    function jumpToBridgeSpan() {
+      distance = 525;
+      if (!running) {
+        speed = minimumSpeed;
+        overlay.classList.add("hidden");
+        running = true;
+      }
+      syncBridgeEnvironment(getBridgeWeightAtDistance(distance), 0);
+      distanceReadout.textContent = String(Math.floor(distance));
+      updateBikeConsole(Math.round(speed * 2.55), distance, performance.now(), true);
+      statusReadout.textContent = "Harbor bay bridge (500m–1000m)";
+    }
+      syncBridgeEnvironment(getBridgeWeightAtDistance(distance), 0);
+      distanceReadout.textContent = String(Math.floor(distance));
+      updateBikeConsole(Math.round(speed * 2.55), distance, performance.now(), true);
+      statusReadout.textContent = "Harbor bay bridge (1000m–2000m)";
+    
+      syncBridgeEnvironment(getBridgeWeightAtDistance(distance), 0);
+      distanceReadout.textContent = String(Math.floor(distance));
+      updateBikeConsole(Math.round(speed * 2.55), distance, performance.now(), true);
+      statusReadout.textContent = "Harbor bay bridge";
+    
+    bridgeJumpButton.addEventListener("click", jumpToBridgeSpan);
+    startButton.addEventListener("click", startGame);
+    document.querySelector("#return-menu").addEventListener("click", showMenu);
+    window.addEventListener("keydown", event => {
+      if (appMode === "garage") {
+        if (event.key === "ArrowLeft") { event.preventDefault(); stepGarageBike(-1); }
+        if (event.key === "ArrowRight") { event.preventDefault(); stepGarageBike(1); }
+        if (event.key === "Escape") showMenu();
+        return;
+      }
+      if (appMode === "menu") {
+        if (event.key === " " || event.key === "Enter") { event.preventDefault(); startGame(); }
+        return;
+      }
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(event.key)) event.preventDefault();
+      keys.add(event.key.toLowerCase());
+      if (event.key.toLowerCase() === "b") jumpToBridgeSpan();
+      if ((event.key === " " || event.key === "Enter") && !running) startGame();
+    });
+    window.addEventListener("keyup", event => keys.delete(event.key.toLowerCase()));
+    window.addEventListener("blur", () => keys.clear());
+    function bindHold(id, key) {
+      const button = document.getElementById(id);
+      if (!button) return;
+      button.addEventListener("pointerdown", event => { event.preventDefault(); keys.add(key); button.setPointerCapture(event.pointerId); });
+      const release = () => keys.delete(key);
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", release);
+    }
+    bindHold("left", "arrowleft");
+    bindHold("right", "arrowright");
+    function endGame() {
+      running = false;
+      keys.clear();
+      speed = 0;
+      speedReadout.textContent = "0";
+      updateBikeConsole(0, distance);
+      const score = Math.floor(distance);
+      if (score > best) {
+        best = score;
+        localStorage.setItem("neon-run-best", String(best));
+        bestReadout.textContent = String(best);
+      }
+      statusReadout.textContent = "Ride ended";
+      document.getElementById("title").innerHTML = 'Ride <span>over.</span>';
+      document.getElementById("message").textContent = `You rode ${score} metres through the city. Take a breath, then hit the road again.`;
+      startButton.textContent = "Ride again";
+      overlay.classList.remove("hidden");
+    }
+
+    const totalCitySpan = blockCount * blockSpacing;
+    const totalLampSpan = lampCount * lampSpacing;
+    const totalGantrySpan = gantries.length * gantrySpacing;
+    const cameraTarget = new THREE.Vector3();
+    const idleCameraTarget = new THREE.Vector3(0, 1.2, -1.5);
+
+    function update(delta, nowMs) {
+      const accelerate = keys.has("arrowup") || keys.has("w");
+      const brake = keys.has("arrowdown") || keys.has("s");
+      const steerLeft = keys.has("arrowleft") || keys.has("a");
+      const steerRight = keys.has("arrowright") || keys.has("d");
+      const currentKmh = speed * 2.55;
+      let targetSpeed = minimumSpeed;
+      let speedDamping = 0.85;
+
+      if (brake) {
+        targetSpeed = minimumSpeed;
+        speedDamping = 4.5;
+      } else if (accelerate) {
+        targetSpeed = maxSpeed;
+        if (currentKmh < 110) {
+          // Stage 1 (40 to 110 KM/H): Fast, punchy acceleration
+          speedDamping = 1.45;
+        } else if (currentKmh < 140) {
+          // Stage 2 (110 to 140 KM/H): Slower mid-high acceleration as drag builds
+          speedDamping = 0.42;
+        } else {
+          // Stage 3 (140 to 180 KM/H): Very slow top-end pull creeping up to 180 KM/H
+          speedDamping = 0.14;
+        }
+      }
+
+      speed = clamp(THREE.MathUtils.damp(speed, targetSpeed, speedDamping, delta), minimumSpeed, maxSpeed);
+      const kmh = Math.round(speed * 2.55);
+      const speedText = String(kmh);
+      if (speedReadout.textContent !== speedText) speedReadout.textContent = speedText;
+      if (steerLeft) targetX -= delta * 8;
+      if (steerRight) targetX += delta * 8;
+      targetX = clamp(targetX, -5.15, 5.15);
+      bikePivot.position.x = THREE.MathUtils.damp(bikePivot.position.x, targetX, 7, delta);
+      bike.rotation.z = THREE.MathUtils.damp(bike.rotation.z, (steerLeft ? .12 : 0) - (steerRight ? .12 : 0), 5, delta);
+      distance += speed * delta * .42;
+      const distanceText = String(Math.floor(distance));
+      if (distanceReadout.textContent !== distanceText) distanceReadout.textContent = distanceText;
+      updateBikeConsole(kmh, distance, nowMs);
+      const motion = speed * delta;
+      texture.offset.y = (texture.offset.y + motion / 1200 * 80) % 1;
+      syncBridgeEnvironment(getBridgeWeightAtDistance(distance), motion);
+
+      // Scroll multi-tiered city skyline blocks
+      for (const block of cityBlocks) {
+        block.position.z += motion;
+        if (block.position.z > 32) block.position.z -= totalCitySpan;
+      }
+
+      // Scroll modern streetlamps, shoulder reflectors & warm road light pools
+      for (const lamp of lampPosts) {
+        lamp.position.z += motion;
+        if (lamp.position.z > 14) lamp.position.z -= totalLampSpan;
+      }
+
+      // Scroll overhead highway truss gantries
+      for (const gantry of gantries) {
+        gantry.position.z += motion;
+        if (gantry.position.z > 16) gantry.position.z -= totalGantrySpan;
+      }
+
+      // GTA V sense-of-speed: dynamic FOV boost above 110 KM/H + subtle speed streaks & micro-shake
+      const speedNorm = clamp((kmh - 110) / 70, 0, 1);
+      const targetFovOffset = speedNorm * 8.5;
+      if (Math.abs(dynamicFovOffset - targetFovOffset) > 0.01) {
+        dynamicFovOffset = THREE.MathUtils.damp(dynamicFovOffset, targetFovOffset, 4.5, delta);
+        camera.fov = cameraSettings.fov + dynamicFovOffset;
+        camera.updateProjectionMatrix();
+      }
+
+      streakMaterial.opacity = speedNorm * 0.34;
+      speedStreaks.visible = streakMaterial.opacity > 0.01;
+      if (speedStreaks.visible) {
+        const posAttr = streakGeometry.attributes.position;
+        for (let i = 0; i < streakCount; i++) {
+          const s = streakData[i];
+          s.z += motion * 1.45;
+          if (s.z > 8) {
+            s.z = -75 - Math.random() * 25;
+          }
+          const idx = i * 6;
+          posAttr.array[idx] = s.x;
+          posAttr.array[idx + 1] = s.y;
+          posAttr.array[idx + 2] = s.z;
+          posAttr.array[idx + 3] = s.x;
+          posAttr.array[idx + 4] = s.y;
+          posAttr.array[idx + 5] = s.z - s.len * (0.4 + speedNorm * 1.2);
+        }
+        posAttr.needsUpdate = true;
+      }
+
+      for (const car of traffic) {
+        const carMotion = car.userData.speed * delta;
+        car.position.z += motion - carMotion;
+        car.userData.laneChangeTimer -= delta;
+        if (car.userData.laneChangeTimer <= 0) {
+          const adjacentLanes = [car.userData.laneIndex - 1, car.userData.laneIndex + 1]
+            .filter(index => index >= 0 && index < lanes.length);
+          const safeLanes = adjacentLanes.filter(index =>
+            Math.abs(lanes[index] - bikePivot.position.x) >= 1.5 ||
+            Math.abs(car.position.z - bikePivot.position.z) > 24
+          );
+          if (safeLanes.length && Math.random() < .12) {
+            setTrafficLane(car, safeLanes[Math.floor(Math.random() * safeLanes.length)]);
+          }
+          car.userData.laneChangeTimer = 8 + Math.random() * 10;
+        }
+        const previousX = car.position.x;
+        car.position.x = THREE.MathUtils.damp(car.position.x, car.userData.targetLaneX, 1.8, delta);
+        const lateralSpeed = delta > 0 ? (car.position.x - previousX) / delta : 0;
+        car.rotation.y = THREE.MathUtils.damp(car.rotation.y, clamp(-lateralSpeed * .035, -.2, .2), 4, delta);
+        car.rotation.z = THREE.MathUtils.damp(car.rotation.z, clamp(-lateralSpeed * .006, -.035, .035), 3, delta);
+        if (car.position.z > 12 || car.position.z < -240) {
+          car.position.z = -140 - Math.random() * 50;
+          setTrafficLane(car, Math.floor(Math.random() * lanes.length));
+          car.position.x = car.userData.targetLaneX;
+          car.rotation.set(0, 0, 0);
+          car.userData.speed = randomTrafficSpeed();
+          car.userData.laneChangeTimer = 8 + Math.random() * 10;
+          setNextTrafficModel(car);
+          car.visible = true;
+        }
+        if (Math.abs(car.position.z - bikePivot.position.z) < 1.75 && Math.abs(car.position.x - bikePivot.position.x) < 1.3) {
+          endGame();
+          break;
+        }
+      }
+      camera.position.x = THREE.MathUtils.damp(camera.position.x, bikePivot.position.x, 16, delta);
+      const shakeAmp = clamp((kmh - 135) / 45, 0, 1) * 0.018;
+      const deckCameraOffset = currentBridgeWeight * bridgeElevationMax;
+      camera.position.y = cameraSettings.height + deckCameraOffset + (shakeAmp > 0 ? (Math.random() - 0.5) * shakeAmp : 0);
+      camera.rotation.order = "YXZ";
+      cameraTarget.set(bikePivot.position.x, 1.2 + deckCameraOffset, -1.5);
+      camera.lookAt(cameraTarget);
+      cameraRoll = THREE.MathUtils.damp(cameraRoll, bike.rotation.z * .65, 7, delta);
+      camera.rotation.z += cameraRoll;
+    }
+
+    syncBridgeEnvironment(getBridgeWeightAtDistance(0), 0);
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      try {
+        const safeNow = typeof now === "number" ? now : performance.now();
+        const delta = Math.max(0, Math.min((safeNow - lastTime) / 1000, .05));
+        lastTime = safeNow;
+        fpsFrameCount++;
+        const fpsElapsed = safeNow - fpsLastTime;
+        if (fpsElapsed >= 500) {
+          const fps = Math.round(fpsFrameCount * 1000 / fpsElapsed);
+          fpsReadout.textContent = String(fps);
+          if (fps < 40) {
+            lowFpsReadings++;
+            if (lowFpsReadings >= 3 && qualityScale > .75) {
+              qualityScale = .75;
+              renderer.setPixelRatio(getRenderPixelRatio());
+              renderer.setSize(innerWidth, innerHeight, false);
+            }
+          } else {
+            lowFpsReadings = 0;
+          }
+          fpsFrameCount = 0;
+          fpsLastTime = safeNow;
+        }
+
+        // Pulse aviation warning beacons atop tall skyscraper spires
+        const pulseTime = safeNow * 0.004;
+        for (let i = 0; i < aviationBeacons.length; i++) {
+          const beacon = aviationBeacons[i];
+          beacon.visible = Math.sin(pulseTime + beacon.userData.phase) > 0.1;
+        }
+
+        if (running) update(delta, safeNow);
+        else if (appMode === "garage") {
+          bike.rotation.y = THREE.MathUtils.damp(bike.rotation.y, garageBikeRotationY, 2, delta);
+          camera.rotation.order = "YXZ";
+          camera.lookAt(-11.2, 0.5, 0.6);
+        } else if (appMode === "menu") {
+          camera.position.set(0, 3.4, 9);
+          camera.rotation.order = "YXZ";
+          camera.lookAt(0, 1, -1.5);
+        } else {
+          dynamicFovOffset = THREE.MathUtils.damp(dynamicFovOffset, 0, 4, delta);
+          camera.fov = cameraSettings.fov + dynamicFovOffset;
+          camera.updateProjectionMatrix();
+          streakMaterial.opacity = THREE.MathUtils.damp(streakMaterial.opacity, 0, 5, delta);
+          speedStreaks.visible = streakMaterial.opacity > 0.01;
+          const idleDeckOffset = currentBridgeWeight * bridgeElevationMax;
+          camera.position.y = cameraSettings.height + idleDeckOffset;
+          bikePivot.position.x = THREE.MathUtils.damp(bikePivot.position.x, 0, 2, delta);
+          bike.rotation.z = THREE.MathUtils.damp(bike.rotation.z, 0, 2, delta);
+          camera.rotation.order = "YXZ";
+          idleCameraTarget.set(0, 1.2 + idleDeckOffset, -1.5);
+          camera.lookAt(idleCameraTarget);0
+          cameraRoll = THREE.MathUtils.damp(cameraRoll, 0, 5, delta);
+          camera.rotation.z += cameraRoll;
+        }
+        renderer.render(appMode === "garage" ? garageScene : scene, camera);
+      } catch (err) {
+        console.error("Frame render error:", err);
+      }
+    }
+    requestAnimationFrame(animate);
+    window.addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(getRenderPixelRatio());
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>
